@@ -6,7 +6,7 @@
 #include "blas.h"
 
 
-// UTILS FUNCTIONS
+// UTILS FUNCTIONS    
 double* initRandomVector(int n, int min, int max){
     double* x = calloc(n, sizeof(double));
     for (int i = 0; i < n; i++){
