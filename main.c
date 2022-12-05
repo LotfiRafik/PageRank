@@ -4,7 +4,6 @@
 #include "hashtable.h"
 #include "blas.h"
 
-
 // Separates the string into substrings, splitting the string into substrings 
 // based on the separator characters (i.e separators).  The function returns an
 // array of pointers to strings, dynamically allocated on the heap, and it 
@@ -74,25 +73,6 @@ char **split(char *string, char seperator, int* nb_tokens){
     return tokens;
 }
 
-char** parse_csv_line(char* line, int nb_columns, char* delimiter){
-
-    // Init list of tokens/strings
-    char** tokens = calloc(nb_columns, sizeof(char*));
-    // Init nb token 
-    int counter = 0;
-
-    char* strToken = strtok(line, delimiter);
-
-    while ( strToken != NULL && counter < nb_columns) {
-        tokens[counter] = strdup(strToken);
-        // Get next token.
-        strToken = strtok(NULL, delimiter);
-        counter++;
-    }
-
-    return tokens;
-}
-
 void free_splitted_tokens(char** tokens, int size){
     for (int i=0; i<size; i++)
         free(tokens[i]);
@@ -134,7 +114,6 @@ void write_matrix(int row, int col, double* matrix, char* filepath){
     fclose(stream);
 }
 
-
 // Return artist number, map artistId, indexID
 int parse_infoArtist_csv(char* filepath, HashTable* hashtable){
 
@@ -153,7 +132,6 @@ int parse_infoArtist_csv(char* filepath, HashTable* hashtable){
     fgets(line, 1024, stream);
     while (fgets(line, 1024, stream))
     {   
-        // char** tokens = parse_csv_line(line, nb_csv_columns, delimiter);
         tokens = split(line, delimiter, &nb_csv_columns);
         int artist_id = atoi(tokens[1]);
         if(!artist_id){
@@ -194,7 +172,6 @@ int parse_collaborations_csv(char* filepath, HashTable* hashtable, double* adjac
     while (fgets(line, 1024, stream))
     {   
         line_cpt++;
-        // char**  tokens = parse_csv_line(line, nb_csv_columns, delimiter);
         char** tokens = split(line, delimiter, &nb_csv_columns);
         int source_id = atoi(tokens[4]);
         int target_id = atoi(tokens[6]);
@@ -229,8 +206,6 @@ int parse_collaborations_csv(char* filepath, HashTable* hashtable, double* adjac
     // Close FIle
     fclose(stream);
 }
-
-
 
 double* create_transition_matrix(double* adjacency_matrix, double *out_links_vector, int nb_nodes){
     // Initialize transition matrix
