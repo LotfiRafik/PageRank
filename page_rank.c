@@ -51,9 +51,7 @@ double *page_rank(double *A, int n, double B, double p){
         
     }
 
-   
 
-    return x;
 
 
     
