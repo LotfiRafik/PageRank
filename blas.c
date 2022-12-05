@@ -34,7 +34,7 @@ void displayVector(double* x, int n){
     printf("\n");
 }
 
-void displayMatrix(int row, int col, void* matrix){
+void displayMatrix(int row, int col, double* matrix){
     printf("_______________________________\n");
     for (int i = 0; i < row; i++){
         for (int j = 0; j < col; j++){
