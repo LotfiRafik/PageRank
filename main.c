@@ -253,8 +253,8 @@ double* create_transition_matrix(double* adjacency_matrix, double *out_links_vec
 int main() {
 
     char* relative_path = "./Deezer-small-DS/";
-    char datasets[][254] = {"Adele/", "Taylor Swift/", "David Guetta/"};
-    int nb_artists_per_dataset[] = {27 , 220, 24851};
+    char datasets[][254] = {"Adele/", "Taylor Swift/", "David Guetta/", "Exo Td/"};
+    int nb_artists_per_dataset[] = {27 , 220, 24851, 4};
     char files[][254] = {"InfoArtist.csv", "collaborations.csv", "level.csv"};
 
     // Dataset to use

@@ -1,0 +1,7 @@
+source;target;song;id_song;id_source;name_source;id_target;name_target
+A1;A2;m;m;1;Adele;2;The Raconteurs
+A1;A2;m;m;1;Adele;3;The Raconteurs
+A1;A2;m;m;1;Adele;4;The Raconteurs
+A2;A3;m;m;2;Adele;3;The Raconteurs
+A3;A2;m;m;3;Adele;2;The Raconteurs
+A4;A1;m;m;4;Adele;1;The Raconteurs
