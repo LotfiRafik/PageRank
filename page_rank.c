@@ -43,52 +43,59 @@ double *page_rank(double *A, int n, double B, double p){
     double *x_new=calloc(n , sizeof(double));
 
 
-    
+    // initializer le vecteur de depart
     for (int j=0; j<n; j++){
         x_new[j]=1./n;
     }
 
+
+    // transposer la matrice pour le calcul de vecteur matrice
     double *Z = transposeMatrix(n,n,A);
 
+
+    // i represente le nombre d'itirations
     int  i = 0;
     
   
 
     
-
+    // boucler jusqu'à la convergence
     for (;;){
 
+
+        // incrémenter le nombre d'itiration
         i++;
-        
+
+        // produit matrice vecteur
         Matrix_Vector_Product(Z, x_new, n,n , x);
 
 
-
+        // claculer le vecteur Page Rank avec le coefficient d'amortissement
         for(int i = 0; i<n; i++){
             x[i]=B * x[i]+(1-B)/n;
         }
 
-
+        // normaliser le vecteur x
         double norm = Norme(x, n);
-
         for(int i = 0; i<n; i++){
             x[i]= x[i]/norm;
         }
 
+
+        // claculer l'erreur entre le nouveau vecteur et le vecteur précédent
         double y[n]; 
 
         for ( int i = 0 ; i<n; i++){
            y[i] = x[i] - x_new[i]; 
         }
 
-
+        // verifier la condition de convergence
         double error = Norme(y, n );
-
-
         if ( error < p ){
             break;
         }
 
+        // initializer le vecteur initial
         for ( int i = 0 ; i<n; i++){
             x_new[i] = x[i]; 
         }
