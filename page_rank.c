@@ -50,24 +50,24 @@ double *page_rank(double *A, int n, double B, double p){
 
     double *Z = transposeMatrix(n,n,A);
 
+    int  i = 0;
     
   
 
     
 
     for (;;){
+
+        i++;
         
         Matrix_Vector_Product(Z, x_new, n,n , x);
 
-        displayVector(x, n);
 
 
         for(int i = 0; i<n; i++){
             x[i]=B * x[i];
              x[i]+= (1-B)/n ;
         }
-
-        displayVector(x, n);
 
 
         double norm = Norme(x, n);
@@ -87,7 +87,7 @@ double *page_rank(double *A, int n, double B, double p){
 
 
         if ( error < p ){
-            return x;
+            break;
         }
 
         for ( int i = 0 ; i<n; i++){
@@ -98,6 +98,12 @@ double *page_rank(double *A, int n, double B, double p){
 
         
     }
+
+    printf("nombre d'iteration: %d \n", i);
+
+    return x;
+
+
     free(x_new);
     free(Z);
 
