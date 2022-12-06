@@ -9,6 +9,7 @@ void displayMatrix(int row, int col, double* matrix);
 double* transposeMatrix(int row, int col, double* A);
 
 void Vector_Scalar_Product(double* x, double alpha, int n);
+void Vector_Scalar_Product_parallel(double* x, double alpha, int n);
 
 void Vector_Vector_Addition(double* x, double* y, int n);
 

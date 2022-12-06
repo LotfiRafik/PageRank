@@ -68,6 +68,14 @@ void Vector_Scalar_Product(double* x, double alpha, int n) {
     }
 }
 
+// Produit scalaire vecteur
+void Vector_Scalar_Product_parallel(double* x, double alpha, int n) {
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < n; i++){
+        x[i] *=  alpha;
+    }
+}
+
 
 // Produit scalaire 2 vecteurs
 double DotProduct(double* x, double* y, int n) {
@@ -81,25 +89,16 @@ double DotProduct(double* x, double* y, int n) {
 // Produit scalaire 2 vecteurs
 double DotProduct_parallel(double* x, double* y, int n) {
     double result = 0;
-    // int counter[4]= {0};
-    #pragma omp parallel
-    {
-        // printf("Thread ID == %d\n", omp_get_thread_num());
-        #pragma omp for schedule(static) reduction(+:result)
-            for (int i = 0; i < n; i++){
-                result += x[i] * y[i];
-                // printf("ThreadID : %d, i == %d\n", omp_get_thread_num(), i);
-                // counter[omp_get_thread_num()] += i;
-            }
+    #pragma omp parallel for schedule(static) reduction(+:result)
+    for (int i = 0; i < n; i++){
+        result += x[i] * y[i];
     }
-    // for (int i = 0; i < 4; i++){
-    //     printf("Counters[%d] == %d\n", i, counter[i]);
-    // }
     return result;
 }
 
 void Matrix_Vector_Product(double* A, double* v, int row, int col, double* Av){
     for(int i=0; i<row; i++) {
+        Av[i] = 0;
         for(int j=0; j<col; j++) {
             Av[i] += A[i*col+j] * v[j];
         }
@@ -108,15 +107,19 @@ void Matrix_Vector_Product(double* A, double* v, int row, int col, double* Av){
 
 void Matrix_Vector_Product_parralel(double* A, double* v, int row, int col, double* Av){
     omp_set_nested(2);
-    double Avi;
+    // double Avi;
     #pragma omp parallel for schedule(static)
     for(int i=0; i<row; i++){
-        Avi = Av[i];
-        #pragma omp parallel for schedule(static) reduction(+:Avi)
+        // printf("Av %d[%d]\n",omp_get_thread_num(),i);
+        // Avi = Av[i];
+        // #pragma omp parallel for schedule(static) reduction(+:Avi)
+        double sum =  0;
         for(int j=0; j<col; j++) {
-            Avi += A[i*col+j] * v[j];
+            // printf("A[%d] v %d[%d]\n",i, omp_get_thread_num(),j);
+            sum += A[i*col+j] * v[j];
         }
-        Av[i] = Avi;
+        Av[i] = sum;
+        // Av[i] = Avi;
     }
 }
 
