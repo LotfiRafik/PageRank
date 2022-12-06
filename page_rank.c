@@ -68,12 +68,15 @@ double *page_rank(double *A, int n, double B, double p){
             x[i]=B * x[i]+(1-B)/n;
         }
 
+        
+
 
         double norm = Norme(x, n);
 
         for(int i = 0; i<n; i++){
             x[i]= x[i]/norm;
         }
+        
 
         double y[n]; 
 
