@@ -65,8 +65,7 @@ double *page_rank(double *A, int n, double B, double p){
 
 
         for(int i = 0; i<n; i++){
-            x[i]=B * x[i];
-             x[i]+= (1-B)/n ;
+            x[i]=B * x[i]+(1-B)/n;
         }
 
 
