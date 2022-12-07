@@ -4,6 +4,11 @@
 #include "hashtable.h"
 #include "blas.h"
 #include "page_rank.h"
+#include <omp.h>
+
+// 1 : Parallel
+// 0 : Sequential
+const int MODE_EXEC = 1;
 
 // Separates the string into substrings, splitting the string into substrings 
 // based on the separator characters (i.e separators).  The function returns an
@@ -208,10 +213,12 @@ int parse_collaborations_csv(char* filepath, HashTable* hashtable, double* adjac
     fclose(stream);
 }
 
+// TODO parallelize it
 double* create_transition_matrix(double* adjacency_matrix, double *out_links_vector, int nb_nodes){
     // Initialize transition matrix
     double *transition_matrix = calloc(nb_nodes * nb_nodes, sizeof(double));
 
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < nb_nodes; i++){
         for (int j = 0; j < nb_nodes; j++){
             // if link exists from j to i
@@ -227,6 +234,7 @@ double* create_transition_matrix(double* adjacency_matrix, double *out_links_vec
 }
 
 int main() {
+    double temps, debut,fin;
 
     char* relative_path = "./Deezer-small-DS/";
     char datasets[][254] = {"Adele/", "Taylor Swift/", "David Guetta/", "Exo Td/"};
@@ -234,7 +242,7 @@ int main() {
     char files[][254] = {"InfoArtist.csv", "collaborations.csv", "level.csv"};
 
     // Dataset to use
-    const int dataset_idx = 1;
+    const int dataset_idx = 2;
 
     char file_path[254] = "";
     char artistInfo_file_path[254] = "";
@@ -256,43 +264,70 @@ int main() {
     // Number of artists of the current used dataset
     int nb_artists = nb_artists_per_dataset[dataset_idx];
 
+	debut = omp_get_wtime();
     // Create HashMap to map each artist ID to it virtuel index between [0, nb_artists]
     HashTable* hashtable = create_table(nb_artists);
-
     // Parse InfoArtist.csv file
     if(parse_infoArtist_csv(artistInfo_file_path, hashtable) < 0){
         perror("Error : can not parse InfoArtist file");
         exit(-1);
     }
+    fin = omp_get_wtime();
+	temps = fin - debut;
+	printf("Time to create HashTable ==>  : %lf s\n",temps);
 
+
+	debut = omp_get_wtime();
     // Initialize adjacency matrix
     double *adjacency_matrix = calloc(nb_artists * nb_artists, sizeof(double));
-
     if(parse_collaborations_csv(collaborations_file_path, hashtable, adjacency_matrix, nb_artists) < 0){
         perror("Error : can not parse collaborations file");
         exit(-1);
     }
+    fin = omp_get_wtime();
+	temps = fin - debut;
+	printf("Time to create adjacency_matrix ==>  : %lf s\n",temps);
 
     char adjacency_matrix_file_path[254] = "";
     strcpy(adjacency_matrix_file_path, file_path);
     strcat(adjacency_matrix_file_path, "adjacency_matrix.csv");
 
-    write_adjacency_matrix(nb_artists, nb_artists, adjacency_matrix, adjacency_matrix_file_path);
+    // write_adjacency_matrix(nb_artists, nb_artists, adjacency_matrix, adjacency_matrix_file_path);
 
+
+    debut = omp_get_wtime();
     double *out_links_vector = calloc(nb_artists,sizeof(double));
     double *vector_of_ones = calloc(nb_artists,sizeof(double));
     for (int i = 0; i < nb_artists; i++){
         vector_of_ones[i] = 1;
     }
+    fin = omp_get_wtime();
+	temps = fin - debut;
+	printf("Time to create vector_of_ones ==>  : %lf s\n",temps);
+
+    debut = omp_get_wtime();
     // Get out_links_vectors
-    Matrix_Vector_Product(adjacency_matrix, vector_of_ones, nb_artists, nb_artists, out_links_vector);
+    Matrix_Vector_Product(adjacency_matrix, vector_of_ones, nb_artists, nb_artists, out_links_vector, MODE_EXEC);
+    fin = omp_get_wtime();
+	temps = fin - debut;
+	printf("Time to create out_links_vector ==>  : %lf s\n",temps);
+
+    
     free(vector_of_ones);
 
+    debut = omp_get_wtime();
     double* transition_matrix = create_transition_matrix(adjacency_matrix, out_links_vector, nb_artists);
+    fin = omp_get_wtime();
+	temps = fin - debut;
+	printf("Time to create transition_matrix ==>  : %lf s\n",temps);
 
     // Apply PageRank Algorithm
+	debut = omp_get_wtime();
+    double *pg_vector = page_rank(transition_matrix, nb_artists, 0.85, 0.01, MODE_EXEC);
+	fin = omp_get_wtime();
+	temps = fin - debut;
 
-    double *pg_vector = page_rank(transition_matrix, nb_artists, 0.85, 0.000001);
+	printf("Time PageRank Algorithm  ==>  : %lf s\n",temps);
 
     char pagerank_vector_file_path[254] = "";
     strcpy(pagerank_vector_file_path, file_path);
@@ -300,12 +335,11 @@ int main() {
 
     write_matrix(1, nb_artists, pg_vector, pagerank_vector_file_path);
 
-
     char transition_matrix_file_path[254] = "";
     strcpy(transition_matrix_file_path, file_path);
     strcat(transition_matrix_file_path, "transition_matrix.csv");
 
-    write_matrix(nb_artists, nb_artists, transition_matrix, transition_matrix_file_path);
+    // write_matrix(nb_artists, nb_artists, transition_matrix, transition_matrix_file_path);
 
     // Free
     free(out_links_vector);

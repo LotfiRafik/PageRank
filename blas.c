@@ -97,7 +97,14 @@ double DotProduct_parallel(double* x, double* y, int n) {
     return result;
 }
 
-void Matrix_Vector_Product(double* A, double* v, int row, int col, double* Av){
+void Matrix_Vector_Product(double* A, double* v, int row, int col, double* Av, int parallel){
+    if(parallel)
+        Matrix_Vector_Product_parralel(A, v, row, col, Av);
+    else
+        Matrix_Vector_Product_sequential(A, v, row, col, Av);
+}
+
+void Matrix_Vector_Product_sequential(double* A, double* v, int row, int col, double* Av){
     for(int i=0; i<row; i++) {
         Av[i] = 0;
         for(int j=0; j<col; j++) {
@@ -125,10 +132,17 @@ void Matrix_Vector_Product_parralel(double* A, double* v, int row, int col, doub
 }
 
 
+// Based on parralel
+void blas21(double* A, double* x, double* y, double alpha, double beta, int row, int col, int parallel){
+    if(parallel)
+        blas21_parallel(A, x, y, alpha, beta, row, col);
+    else
+        blas21_sequential(A, x, y, alpha, beta, row, col);
+}
+
 
 // x= α.Ax+βy
-
-void blas21(double* A, double* x, double* y, double alpha, double beta, int row, int col){
+void blas21_sequential(double* A, double* x, double* y, double alpha, double beta, int row, int col){
     double* v = malloc(row * sizeof(double));
 
     for(int i=0; i<row; i++) {
