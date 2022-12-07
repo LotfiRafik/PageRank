@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <omp.h>
+#include <string.h>
 #include "blas.h"
 
 
@@ -123,6 +124,44 @@ void Matrix_Vector_Product_parralel(double* A, double* v, int row, int col, doub
     }
 }
 
+
+
+// x= α.Ax+βy
+
+void blas21(double* A, double* x, double* y, double alpha, double beta, int row, int col){
+    double* v = malloc(row * sizeof(double));
+
+    for(int i=0; i<row; i++) {
+        double ax = 0;
+        for(int j=0; j<col; j++) {
+            ax += A[i*col+j] * x[j];
+        }
+        v[i] = alpha * ax + beta * y[i];
+    }
+
+    memcpy(x, v, row * sizeof(double));    
+    free(v);
+}
+
+
+void blas21_parallel(double* A, double* x, double* y, double alpha, double beta, int row, int col){
+    double* v = malloc(row * sizeof(double));
+
+    #pragma omp parallel for schedule(static)
+    for(int i=0; i<row; i++) {
+        double ax = 0;
+        for(int j=0; j<col; j++) {
+            ax += A[i*col+j] * x[j];
+        }
+        v[i] = alpha * ax + beta * y[i];
+    }
+
+    memcpy(x, v, row * sizeof(double));    
+    free(v);
+}
+
+
+
 double* Matrix_Matrix_Product(double* A, double* B, int rowA, int colA, int colB, double* AB){
     if(AB == NULL)
         AB = calloc(rowA*colB, sizeof(double));
@@ -151,6 +190,25 @@ double* Matrix_Matrix_Subsctraction(double* A, double* B, int row, int col, doub
 // Norme2 d'un vector
 double Norme(double* x, int n){
     return sqrt(DotProduct(x, x, n));
+}
+
+// Norme1 d'un vector
+double Norme_One(double* x, int n){
+    double result = 0;
+    for (int i = 0; i < n; i++){
+        result += x[i];
+    }
+    return result;
+}
+
+// Norme1 d'un vector
+double Norme_One_parallel(double* x, int n){
+    double result = 0;
+    #pragma omp parallel for schedule(static) reduction(+:result)
+    for (int i = 0; i < n; i++){
+        result += x[i];
+    }
+    return result;
 }
 
 // La norme Frobenius d’une matrice

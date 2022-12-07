@@ -7,6 +7,8 @@ void displayVector(double* x, int n);
 void displayMatrix(int row, int col, double* matrix);
 
 double* transposeMatrix(int row, int col, double* A);
+void blas21(double* A, double* x, double* y, double alpha, double beta, int row, int col);
+void blas21_parallel(double* A, double* x, double* y, double alpha, double beta, int row, int col);
 
 void Vector_Scalar_Product(double* x, double alpha, int n);
 void Vector_Scalar_Product_parallel(double* x, double alpha, int n);

@@ -1,148 +1,64 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "blas.h"
-
-
-/*
-=================================================================
-Lecture de la matrice
-
-*/
-double *Lecture_Matrice(int nb_ligne, int nb_colone, FILE *matrice)
-{
-
-    double *mat = malloc(nb_ligne * nb_colone * sizeof(double));
-
-    for (int i = 0; i < nb_ligne; i++)
-    {
-        for (int j = 0; j < nb_colone; j++)
-        {
-            double v = 0;
-            fscanf(matrice, "%lf", &v);
-
-            mat[j * nb_ligne + i] = v;
-        }
-    }
-
-    return mat;
-}
-
-/*
-===========================================================================
-affichage de la matrice
-
-*/
-
-
+#include "page_rank.h"
+#include <string.h>
 
 
 double *page_rank(double *A, int n, double B, double p){
 
-    double *x=calloc(n , sizeof(double));
+    double *x=calloc(n , sizeof(double)),
+            *x_prec=calloc(n , sizeof(double)),
+             *teleportation_vector=calloc(n , sizeof(double)),
+             error;
 
-    double *x_new=calloc(n , sizeof(double));
-
-
+    /* TODO 
+        create parallel function to initialize a vector with a scalar value
+    */
     // initializer le vecteur de depart
     for (int j=0; j<n; j++){
-        x_new[j]=1./n;
+        x[j]=1./n;
+        // TODO Personalized pageRank changes this vector
+        teleportation_vector[j] = 1./n;
     }
-
-
-    // transposer la matrice pour le calcul de vecteur matrice
-    double *Z = transposeMatrix(n,n,A);
-
 
     // i represente le nombre d'itirations
-    int  i = 0;
-    
-  
-
+    int  nb_iterations = 0;
     
     // boucler jusqu'à la convergence
-    for (;;){
-
-
+    do{
         // incrémenter le nombre d'itiration
-        i++;
+        nb_iterations++;
 
-        // produit matrice vecteur
-        Matrix_Vector_Product(Z, x_new, n,n , x);
+        // sauvgarder le vecteur i-1
+        memcpy(x_prec, x, n * sizeof(double));    
 
+        // TODO Parallelize the for loop
+        blas21(A, x, teleportation_vector, B, 1-B, n, n);
 
-        // claculer le vecteur Page Rank avec le coefficient d'amortissement
-        for(int i = 0; i<n; i++){
-            x[i]=B * x[i]+(1-B)/n;
-        }
-
+        /* TODO 
+            Check with quentin if we use norme 1 or norme 2
+            in the excercice TD quentin did not normalize the vector x
+        */
         // normaliser le vecteur x
         double norm = Norme(x, n);
-        for(int i = 0; i<n; i++){
-            x[i]= x[i]/norm;
-        }
+        // Vector_Scalar_Product(x, 1/norm, n);
 
-
-        // claculer l'erreur entre le nouveau vecteur et le vecteur précédent
+        // calculer l'erreur entre le nouveau vecteur et le vecteur précédent
         double y[n]; 
-
-        for ( int i = 0 ; i<n; i++){
-           y[i] = x[i] - x_new[i]; 
+        // TODO Parralelize the for loop
+        for (int i = 0 ; i<n; i++){
+           y[i] = x[i] - x_prec[i]; 
         }
-
         // verifier la condition de convergence
-        double error = Norme(y, n );
-        if ( error < p ){
-            break;
-        }
+        error = Norme(y, n);
 
-        // initializer le vecteur initial
-        for ( int i = 0 ; i<n; i++){
-            x_new[i] = x[i]; 
-        }
-   
+    } while(error > p);
 
 
-        
-    }
+    printf("nombre d'iteration: %d \n", nb_iterations);
 
-    printf("nombre d'iteration: %d \n", i);
-
+    // Free allocated memory space
+    free(x_prec);
     return x;
-
-
-    free(x_new);
-    free(Z);
-
-
-
-    
-}
-
-
-
-int main(int argc, char* argv){
-    FILE *mat;
-    mat = fopen("Deezer-small-DS/Exo Td/transition_matrix.csv", "r");
-    if (mat == NULL)
-    {
-        printf("le fichier n'existe pas");
-        return 1;
-    }
-
-    double *mat1 = Lecture_Matrice(4, 4, mat);
-    fclose(mat);
-
-
-
-    double *x=page_rank(mat1, 4, 0.85, 0.001);
-
-    displayVector(x, 4);
-
-    free(mat1);
-    free(x);
-
-    
-
-   
-    return 0;
 }

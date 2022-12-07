@@ -3,6 +3,7 @@
 #include <string.h>
 #include "hashtable.h"
 #include "blas.h"
+#include "page_rank.h"
 
 // Separates the string into substrings, splitting the string into substrings 
 // based on the separator characters (i.e separators).  The function returns an
@@ -233,7 +234,7 @@ int main() {
     char files[][254] = {"InfoArtist.csv", "collaborations.csv", "level.csv"};
 
     // Dataset to use
-    const int dataset_idx = 0;
+    const int dataset_idx = 3;
 
     char file_path[254] = "";
     char artistInfo_file_path[254] = "";
@@ -288,7 +289,11 @@ int main() {
     free(vector_of_ones);
 
     double* transition_matrix = create_transition_matrix(adjacency_matrix, out_links_vector, nb_artists);
-    
+
+    // Apply PageRank Algorithm
+
+    double *pg_vector = page_rank(transition_matrix, nb_artists, 0.85, 0.000001);
+    displayVector(pg_vector, nb_artists);    
 
     char transition_matrix_file_path[254] = "";
     strcpy(transition_matrix_file_path, file_path);
