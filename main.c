@@ -107,7 +107,7 @@ void write_matrix(int row, int col, double* matrix, char* filepath){
     }
     for (int i = 0; i < row; i++){
         for (int j = 0; j < col; j++){
-            fprintf(stream,"%0.2f ", matrix[i*col+j]);
+            fprintf(stream,"%0.4f ", matrix[i*col+j]);
         }
         fprintf(stream,"\n");
     }
@@ -234,7 +234,7 @@ int main() {
     char files[][254] = {"InfoArtist.csv", "collaborations.csv", "level.csv"};
 
     // Dataset to use
-    const int dataset_idx = 3;
+    const int dataset_idx = 1;
 
     char file_path[254] = "";
     char artistInfo_file_path[254] = "";
@@ -293,7 +293,13 @@ int main() {
     // Apply PageRank Algorithm
 
     double *pg_vector = page_rank(transition_matrix, nb_artists, 0.85, 0.000001);
-    displayVector(pg_vector, nb_artists);    
+
+    char pagerank_vector_file_path[254] = "";
+    strcpy(pagerank_vector_file_path, file_path);
+    strcat(pagerank_vector_file_path, "pagerank_vector.csv");
+
+    write_matrix(1, nb_artists, pg_vector, pagerank_vector_file_path);
+
 
     char transition_matrix_file_path[254] = "";
     strcpy(transition_matrix_file_path, file_path);
