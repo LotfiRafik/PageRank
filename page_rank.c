@@ -4,7 +4,7 @@
 #include "page_rank.h"
 #include <string.h>
 
-double *page_rank(double *A, int n, double B, double p, int parallel_mode){
+double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int parallel_mode, int sparce_rep){
 
     double *x=calloc(n , sizeof(double)),
             *x_prec=calloc(n , sizeof(double)),
@@ -33,7 +33,8 @@ double *page_rank(double *A, int n, double B, double p, int parallel_mode){
         memcpy(x_prec, x, n * sizeof(double));    
 
         // TODO Parallelize the for loop
-        blas21(A, x, teleportation_vector, B, 1-B, n, n, parallel_mode);
+        blas21(A, x, teleportation_vector, B, 1-B, n, n, nbNonZeroA, parallel_mode, sparce_rep);
+        // blas21(A, x, teleportation_vector, B, 1-B, n, nbNonZeroA, sparce_rep);
 
         /* TODO 
             Check with quentin if we use norme 1 or norme 2

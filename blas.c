@@ -133,11 +133,20 @@ void Matrix_Vector_Product_parralel(double* A, double* v, int row, int col, doub
 
 
 // Based on parralel
-void blas21(double* A, double* x, double* y, double alpha, double beta, int row, int col, int parallel){
-    if(parallel)
-        blas21_parallel(A, x, y, alpha, beta, row, col);
-    else
-        blas21_sequential(A, x, y, alpha, beta, row, col);
+
+void blas21(double* A, double* x, double* y, double alpha, double beta, int row, int col, int nbNonZeroA, int parallel, int sparce_rep){
+    if(parallel){
+        if(!sparce_rep)
+            blas21_parallel(A, x, y, alpha, beta, row, col);
+        else
+            blas21_parallel_sparce(A, x, y, alpha, beta, col, nbNonZeroA);
+    }
+    else{
+        if(!sparce_rep)
+            blas21_sequential(A, x, y, alpha, beta, row, col);
+        else
+            blas21_sequential_sparce(A, x, y, alpha, beta, col, nbNonZeroA);
+    }
 }
 
 
@@ -157,6 +166,17 @@ void blas21_sequential(double* A, double* x, double* y, double alpha, double bet
     free(v);
 }
 
+// x= α.Ax+βy
+void blas21_sequential_sparce(double* sparceA, double* x, double* y, double alpha, double beta, int n, int sizeSparceA){
+    double* Av = calloc(n ,sizeof(double));
+    // Matrix Vector Product 
+    Sparce_Matrix_Vector_Product(sparceA, x, sizeSparceA, n, Av, 0);
+    for(int j=0; j<n; j++) {
+        x[j] = alpha * Av[j] + beta * y[j];
+    }
+    free(Av);
+}
+
 
 void blas21_parallel(double* A, double* x, double* y, double alpha, double beta, int row, int col){
     double* v = malloc(row * sizeof(double));
@@ -174,6 +194,17 @@ void blas21_parallel(double* A, double* x, double* y, double alpha, double beta,
     free(v);
 }
 
+// x= α.Ax+βy
+void blas21_parallel_sparce(double* sparceA, double* x, double* y, double alpha, double beta, int n, int sizeSparceA){
+    double* Av = calloc(n ,sizeof(double));
+    // Matrix Vector Product 
+    Sparce_Matrix_Vector_Product(sparceA, x, sizeSparceA, n, Av, 1);
+    #pragma omp parallel for schedule(static)
+    for(int j=0; j<n; j++) {
+        x[j] = alpha * Av[j] + beta * y[j];
+    }
+    free(Av);
+}
 
 
 double* Matrix_Matrix_Product(double* A, double* B, int rowA, int colA, int colB, double* AB){
@@ -235,3 +266,97 @@ double NormeFrobenius(int nb_ligne, int nb_colonne, double* matrice){
     }
     return sqrt(result);
 } 
+
+
+
+
+void Sparce_Matrix_Vector_Product(double* A, double* v, int sizeA, int sizeV, double* Av, int parallel){
+    #pragma omp parallel if(parallel)
+    {
+        double* Av_private;
+        if(parallel) Av_private = calloc(sizeV, sizeof(double));
+        #pragma omp for schedule(static)
+        for(int i=0; i<sizeA; i++) {
+            int r_idx = A[i*3];
+            int c_idx = A[i*3+1];
+            if(parallel)
+                Av_private[r_idx] += A[i*3+2] * v[c_idx];
+            else
+                Av[r_idx] += A[i*3+2] * v[c_idx];
+        }
+        if(parallel){
+            #pragma omp critical
+            {
+                for(int i=0; i<sizeV; i++)
+                    Av[i] += Av_private[i];
+            }
+            free(Av_private);
+        }
+    }
+}
+
+int count_zero_matrix(double *A, int row, int col){
+	int nbNonZero = 0;
+    for(int i=0; i<row; i++) {
+        for(int j=0; j<col; j++) {
+            if (A[i*col+j] != 0)
+				nbNonZero++;
+        }
+    }
+    return nbNonZero;
+}
+
+// Convert normal matrix representation to sparce matrix representation
+double* matrix_to_sparce(double *A, int row, int col, int* nbNonZero){
+	// If nbNonZero not known
+	if(*nbNonZero < 0){
+		*nbNonZero = count_zero_matrix(A, row, col);
+	}
+
+	double *sparceA = calloc(*nbNonZero * 3,sizeof(double));
+
+	// Making of new matrix
+	int k = 0;
+	for (int i = 0; i < row; i++)
+		for (int j = 0; j < col; j++)
+			if (A[i*col+j] != 0)
+			{
+				sparceA[3*k] = i;
+				sparceA[3*k+1] = j;
+				sparceA[3*k+2] = A[i*col+j];
+				k++;
+			}
+
+	return sparceA;
+}
+
+
+// Convert sparce matrix representation to normal matrix representation
+double* sparce_to_matrix(double *sparceA, double *A, int row, int col, int nbNonZero){
+	int r_idx, c_idx;
+
+	// Init matrix 
+	if(A == NULL)
+        A = calloc(row*col, sizeof(double));
+
+	// Making of new matrix
+	for (int i=0; i<nbNonZero; i++)
+	{
+		r_idx = sparceA[i*3];
+		c_idx = sparceA[i*3+1];
+		A[r_idx*col+c_idx] = sparceA[3*i+2];
+	}
+
+	return A;
+}
+
+void display_sparce_matrix(double *sparceA, int nbNonZero){
+
+	for (int i=0; i<nbNonZero; i++)
+	{
+		for (int j=0; j<3; j++)
+			printf("%f ", sparceA[3*i+j]);
+
+		printf("\n");
+	}
+}

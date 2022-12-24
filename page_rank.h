@@ -1,1 +1,1 @@
-double *page_rank(double *A, int n, double B, double p, int parallel_mode);
+double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int parallel_mode, int sparce_rep);

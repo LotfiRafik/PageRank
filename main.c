@@ -6,9 +6,6 @@
 #include "page_rank.h"
 #include <omp.h>
 
-// 1 : Parallel
-// 0 : Sequential
-const int MODE_EXEC = 1;
 
 // Separates the string into substrings, splitting the string into substrings 
 // based on the separator characters (i.e separators).  The function returns an
@@ -120,8 +117,11 @@ void write_matrix(int row, int col, double* matrix, char* filepath){
     fclose(stream);
 }
 
-// Return artist number, map artistId, indexID
-int parse_infoArtist_csv(char* filepath, HashTable* hashtable){
+/*  
+    map each artistId to an integer between (0, nb_artists)
+    returns integer : if >= 0 : nb artists (i.e nb lines in the csv file) OR < 0 : error 
+*/
+int parse_infoArtist_csv(char* filepath, HashTable** hashtable){
 
     FILE* stream = fopen(filepath, "r");
     char delimiter = ';';
@@ -134,6 +134,8 @@ int parse_infoArtist_csv(char* filepath, HashTable* hashtable){
     }
 
     char line[1024];
+
+    // Count nb lines/nb artists
     // read header line;
     fgets(line, 1024, stream);
     while (fgets(line, 1024, stream))
@@ -147,25 +149,55 @@ int parse_infoArtist_csv(char* filepath, HashTable* hashtable){
         
         free_splitted_tokens(tokens, nb_csv_columns);
 
-        ht_insert(hashtable, artist_id, artist_cpt);
-
         artist_cpt++;
     }
 
     printf("Nombre d'artiste == %d\n", artist_cpt);
 
+    // Create HashMap to map each artist ID to it virtuel index between [0, nb_artists]
+    *hashtable = create_table(artist_cpt);
+
+    // Rewind stream to the begining
+    rewind(stream);
+    artist_cpt = 0;
+
+    // Parse file
+
+    // read header line;
+    fgets(line, 1024, stream);
+    while (fgets(line, 1024, stream))
+    {   
+        tokens = split(line, delimiter, &nb_csv_columns);
+        int artist_id = atoi(tokens[1]);
+        if(!artist_id){
+            perror("Can not convert artist id to integer");
+            return(-1);
+        }
+        
+        free_splitted_tokens(tokens, nb_csv_columns);
+
+        ht_insert(*hashtable, artist_id, artist_cpt);
+
+        artist_cpt++;
+    }
+
+
     // Close FIle
     fclose(stream);
 
-    return 0;
+    return artist_cpt;
 }
 
-// Return artist number, map artistId, indexID
+/*
+    create adjacency matrix from collaborations csv file
+    return nb of collaborations (nb non zero elements of the adjacency matrix)
+*/
 int parse_collaborations_csv(char* filepath, HashTable* hashtable, double* adjacency_matrix, int nb_artists){
 
     FILE* stream = fopen(filepath, "r");
     char  delimiter = ';';
     int nb_csv_columns = 0;
+    int nb_not_zero_adjacency_matrix = 0;
     if(stream == NULL) {
         perror("Error opening file");
         return(-1);
@@ -205,70 +237,103 @@ int parse_collaborations_csv(char* filepath, HashTable* hashtable, double* adjac
         }
 
         // Source points to Target
-        adjacency_matrix[source_idx * nb_artists +  target_idx] = 1;
+        if(adjacency_matrix[source_idx * nb_artists +  target_idx] != 1){
+            adjacency_matrix[source_idx * nb_artists +  target_idx] = 1;
+            // Increment cpt non zero elements 
+            // usefull to create sparce matrix representation later
+            nb_not_zero_adjacency_matrix++;
+        }
 
     }
 
     // Close FIle
     fclose(stream);
+
+    return nb_not_zero_adjacency_matrix;
 }
 
 // TODO parallelize it
-double* create_transition_matrix(double* adjacency_matrix, double *out_links_vector, int nb_nodes){
+double* create_transition_matrix(double* adjacency_matrix, double *out_links_vector, int nb_links, int nbNonZero, int sparce_rep, int parralel){
     // Initialize transition matrix
-    double *transition_matrix = calloc(nb_nodes * nb_nodes, sizeof(double));
+    double *transition_matrix;
+    if(sparce_rep){
+        transition_matrix = calloc(nbNonZero * 3, sizeof(double));
+        #pragma omp parallel for schedule(static) if(parralel)
+        for (int i = 0; i < nbNonZero; i++){
+                // if link exists from j to i
+                // then probabilty of going to i from j is 1 div number of out links of node j
+                int j = adjacency_matrix[i*3];
+                transition_matrix[i*3] = adjacency_matrix[i*3+1];
+                transition_matrix[i*3+1] = j;
+                transition_matrix[i*3+2] = 1 / out_links_vector[j];
+        }
+    }
+    else{
+        transition_matrix = calloc(nb_links * nb_links, sizeof(double));
 
-    #pragma omp parallel for schedule(static)
-    for (int i = 0; i < nb_nodes; i++){
-        for (int j = 0; j < nb_nodes; j++){
-            // if link exists from j to i
-            // then probabilty of going to i from j is 1 div number of out links of node j
-            if(adjacency_matrix[j*nb_nodes+i]){
-                transition_matrix[i*nb_nodes+j] = 1 / out_links_vector[j];
+        #pragma omp parallel for schedule(static) if(parralel)
+        for (int i = 0; i < nb_links; i++){
+            for (int j = 0; j < nb_links; j++){
+                // if link exists from j to i
+                // then probabilty of going to i from j is 1 div number of out links of node j
+                if(adjacency_matrix[j*nb_links+i])
+                    transition_matrix[i*nb_links+j] = 1 / out_links_vector[j];
             }
-
         }
     }
 
     return transition_matrix;
 }
 
-int main() {
-    double temps, debut,fin;
+int main(int argc, char **argv) {
+    double temps, debut,fin,
+            *opposite_rep_adjacency_matrix;
+    HashTable* hashtable;
 
     char* relative_path = "./Deezer-small-DS/";
     char datasets[][254] = {"Adele/", "Taylor Swift/", "David Guetta/", "Exo Td/"};
-    int nb_artists_per_dataset[] = {27 , 220, 24851, 4};
     char files[][254] = {"InfoArtist.csv", "collaborations.csv", "level.csv"};
-
-    // Dataset to use
-    const int dataset_idx = 2;
 
     char file_path[254] = "";
     char artistInfo_file_path[254] = "";
     char collaborations_file_path[254] = "";
     char level_file_path[254] = "";
 
+
+
+    // Dataset to use
+    int dataset_idx = 3;
+    // 1 : Parallel , 0 : Sequential
+    int MODE_EXEC = 1;
+    // 1 : Use sparce matrix representation, 0 : Use normal matrix representation
+    int SPARCE_REPRESENTATION = 1;
+
+    if(argc < 5){
+        fprintf(stderr, "Usage: %s dataset<0-3> parallel<0|1> sparce<0|1> outputFiles<0|1>\n", argv[0]);
+        exit(1);
+    }
+    dataset_idx = atoi(argv[1]);
+    MODE_EXEC = atoi(argv[2]);
+    SPARCE_REPRESENTATION = atoi(argv[3]);
+    int outputfiles = atoi(argv[4]);
+
+
+    // Prepare file paths
     strcat(file_path, relative_path);
     strcat(file_path, datasets[dataset_idx]);
-
     // copying str1 to str2
     strcpy(artistInfo_file_path, file_path);
     strcpy(collaborations_file_path, file_path);    
     strcpy(level_file_path, file_path);
-
     strcat(artistInfo_file_path, files[0]);
     strcat(collaborations_file_path, files[1]);
     strcat(level_file_path, files[2]);
 
-    // Number of artists of the current used dataset
-    int nb_artists = nb_artists_per_dataset[dataset_idx];
 
 	debut = omp_get_wtime();
-    // Create HashMap to map each artist ID to it virtuel index between [0, nb_artists]
-    HashTable* hashtable = create_table(nb_artists);
     // Parse InfoArtist.csv file
-    if(parse_infoArtist_csv(artistInfo_file_path, hashtable) < 0){
+    int nb_artists = parse_infoArtist_csv(artistInfo_file_path, &hashtable);
+    if(nb_artists < 0){
         perror("Error : can not parse InfoArtist file");
         exit(-1);
     }
@@ -280,72 +345,90 @@ int main() {
 	debut = omp_get_wtime();
     // Initialize adjacency matrix
     double *adjacency_matrix = calloc(nb_artists * nb_artists, sizeof(double));
-    if(parse_collaborations_csv(collaborations_file_path, hashtable, adjacency_matrix, nb_artists) < 0){
+    int nb_collaborations = parse_collaborations_csv(collaborations_file_path, hashtable, adjacency_matrix, nb_artists);
+    if(nb_collaborations < 0){
         perror("Error : can not parse collaborations file");
         exit(-1);
     }
+
+    // Create sparce matrix representation of the adjacency matrix
+    if(SPARCE_REPRESENTATION){
+        opposite_rep_adjacency_matrix = adjacency_matrix;
+        adjacency_matrix = matrix_to_sparce(adjacency_matrix, nb_artists, nb_artists, &nb_collaborations);
+    }
+
+
     fin = omp_get_wtime();
 	temps = fin - debut;
 	printf("Time to create adjacency_matrix ==>  : %lf s\n",temps);
 
-    char adjacency_matrix_file_path[254] = "";
-    strcpy(adjacency_matrix_file_path, file_path);
-    strcat(adjacency_matrix_file_path, "adjacency_matrix.csv");
 
-    // write_adjacency_matrix(nb_artists, nb_artists, adjacency_matrix, adjacency_matrix_file_path);
-
-
+    // CREATE TRANSITION MATRIX
     debut = omp_get_wtime();
     double *out_links_vector = calloc(nb_artists,sizeof(double));
     double *vector_of_ones = calloc(nb_artists,sizeof(double));
     for (int i = 0; i < nb_artists; i++){
         vector_of_ones[i] = 1;
     }
-    fin = omp_get_wtime();
-	temps = fin - debut;
-	printf("Time to create vector_of_ones ==>  : %lf s\n",temps);
 
-    debut = omp_get_wtime();
     // Get out_links_vectors
-    Matrix_Vector_Product(adjacency_matrix, vector_of_ones, nb_artists, nb_artists, out_links_vector, MODE_EXEC);
-    fin = omp_get_wtime();
-	temps = fin - debut;
-	printf("Time to create out_links_vector ==>  : %lf s\n",temps);
-
-    
+    if(SPARCE_REPRESENTATION)
+        Sparce_Matrix_Vector_Product(adjacency_matrix, vector_of_ones, nb_collaborations, nb_artists, out_links_vector, MODE_EXEC);
+    else
+        Matrix_Vector_Product(adjacency_matrix, vector_of_ones, nb_artists, nb_artists, out_links_vector, MODE_EXEC);
+        
     free(vector_of_ones);
 
     debut = omp_get_wtime();
-    double* transition_matrix = create_transition_matrix(adjacency_matrix, out_links_vector, nb_artists);
+    double* transition_matrix = create_transition_matrix(adjacency_matrix, out_links_vector, nb_artists, nb_collaborations, SPARCE_REPRESENTATION, MODE_EXEC);
     fin = omp_get_wtime();
 	temps = fin - debut;
 	printf("Time to create transition_matrix ==>  : %lf s\n",temps);
 
+
     // Apply PageRank Algorithm
 	debut = omp_get_wtime();
-    double *pg_vector = page_rank(transition_matrix, nb_artists, 0.85, 0.01, MODE_EXEC);
+    double *pg_vector = page_rank(transition_matrix, nb_collaborations, nb_artists, 0.85, 0.00001, MODE_EXEC, SPARCE_REPRESENTATION);
 	fin = omp_get_wtime();
 	temps = fin - debut;
 
 	printf("Time PageRank Algorithm  ==>  : %lf s\n",temps);
 
+
+    // WRITE MATRIX TO DISK
+    if(outputfiles){
+        char adjacency_matrix_file_path[254] = "";
+        strcpy(adjacency_matrix_file_path, file_path);
+        strcat(adjacency_matrix_file_path, "adjacency_matrix.csv");
+        if(SPARCE_REPRESENTATION)
+            write_adjacency_matrix(nb_artists, nb_artists, opposite_rep_adjacency_matrix, adjacency_matrix_file_path);
+        else
+            write_adjacency_matrix(nb_artists, nb_artists, adjacency_matrix, adjacency_matrix_file_path);      
+
+        // WRITE TRANSITION MATRIX TO DISK
+        char transition_matrix_file_path[254] = "";
+        strcpy(transition_matrix_file_path, file_path);
+        strcat(transition_matrix_file_path, "transition_matrix.csv");
+
+        if(SPARCE_REPRESENTATION)
+            write_matrix(nb_artists, nb_artists, sparce_to_matrix(transition_matrix, NULL, nb_artists, nb_artists, nb_collaborations), transition_matrix_file_path);
+        else
+            write_matrix(nb_artists, nb_artists, transition_matrix, transition_matrix_file_path);
+    }
+
+
+    // WRITE PAGERANK VECTOR TO DISK
     char pagerank_vector_file_path[254] = "";
     strcpy(pagerank_vector_file_path, file_path);
     strcat(pagerank_vector_file_path, "pagerank_vector.csv");
-
     write_matrix(1, nb_artists, pg_vector, pagerank_vector_file_path);
 
-    char transition_matrix_file_path[254] = "";
-    strcpy(transition_matrix_file_path, file_path);
-    strcat(transition_matrix_file_path, "transition_matrix.csv");
 
-    // write_matrix(nb_artists, nb_artists, transition_matrix, transition_matrix_file_path);
-
-    // Free
+    // Free allocated space
     free(out_links_vector);
     free(adjacency_matrix);
     free(transition_matrix);
-    // Free HashTable
     free_table(hashtable);
+
     return 0;
 }

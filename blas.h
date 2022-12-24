@@ -8,9 +8,11 @@ void displayMatrix(int row, int col, double* matrix);
 
 double* transposeMatrix(int row, int col, double* A);
 
-void blas21(double* A, double* x, double* y, double alpha, double beta, int row, int col, int parallel);
+void blas21(double* A, double* x, double* y, double alpha, double beta, int row, int col, int nbNonZeroA, int parallel, int sparce_rep);
 void blas21_parallel(double* A, double* x, double* y, double alpha, double beta, int row, int col);
 void blas21_sequential(double* A, double* x, double* y, double alpha, double beta, int row, int col);
+void blas21_parallel_sparce(double* sparceA, double* x, double* y, double alpha, double beta, int n, int sizeSparceA);
+void blas21_sequential_sparce(double* sparceA, double* x, double* y, double alpha, double beta, int n, int sizeSparceA);
 
 void Vector_Scalar_Product(double* x, double alpha, int n);
 void Vector_Scalar_Product_parallel(double* x, double alpha, int n);
@@ -36,3 +38,15 @@ double Norme(double* x, int n);
 
 // La norme Frobenius d’une matrice
 double NormeFrobenius(int nb_ligne, int nb_colonne, double* matrice);
+
+
+
+
+
+void Sparce_Matrix_Vector_Product(double* A, double* v, int sizeA, int sizeV, double* Av, int parallel);
+int count_zero_matrix(double *A, int row, int col);
+// Convert normal matrix representation to sparce matrix representation
+double* matrix_to_sparce(double *A, int row, int col, int* nbNonZero);
+// Convert sparce matrix representation to normal matrix representation
+double* sparce_to_matrix(double *sparceA, double *A, int row, int col, int nbNonZero);
+void display_sparce_matrix(double *sparceA, int nbNonZero);
