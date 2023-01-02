@@ -14,7 +14,7 @@ void write_adjacency_matrix(int row, int col, double* matrix, char* filepath);
 void write_matrix(int row, int col, double* matrix, char* filepath);
 int parse_infoArtist_csv(char* filepath, HashTable** hashtable);
 int parse_collaborations_csv(char* filepath, HashTable* hashtable, double* adjacency_matrix, int nb_artists);
-double* create_transition_matrix(double* adjacency_matrix, double *out_links_vector, int nb_links, int nbNonZero, int sparce_rep, int parralel);
+double* create_transition_matrix(double* adjacency_matrix, double *out_links_vector, int n, int nbNonZero, int sparce_rep, int parralel);
 
 // *****************************
 
@@ -78,7 +78,8 @@ int main(int argc, char **argv) {
 
 
 	debut = omp_get_wtime();
-    // Initialize adjacency matrix
+    // Initialize adjacency matrix 
+    // SO(n^2)
     double *adjacency_matrix = calloc(nb_artists * nb_artists, sizeof(double));
     int nb_collaborations = parse_collaborations_csv(collaborations_file_path, hashtable, adjacency_matrix, nb_artists);
     if(nb_collaborations < 0){
@@ -89,6 +90,7 @@ int main(int argc, char **argv) {
     // Create sparce matrix representation of the adjacency matrix
     if(SPARCE_REPRESENTATION){
         opposite_rep_adjacency_matrix = adjacency_matrix;
+        // TO(n^2), SO(nzero * 3)
         adjacency_matrix = matrix_to_sparce(adjacency_matrix, nb_artists, nb_artists, &nb_collaborations);
     }
 
@@ -100,21 +102,42 @@ int main(int argc, char **argv) {
 
     // CREATE TRANSITION MATRIX
     debut = omp_get_wtime();
+    // SO(n)
     double *out_links_vector = calloc(nb_artists,sizeof(double));
+    // SO(n)
     double *vector_of_ones = calloc(nb_artists,sizeof(double));
+
+    // TO(n / p)
+    #pragma omp parallel for schedule(static) if(MODE_EXEC)
     for (int i = 0; i < nb_artists; i++){
         vector_of_ones[i] = 1;
     }
 
     // Get out_links_vectors
     if(SPARCE_REPRESENTATION)
+        /*
+            Time complexity : TO(nzero)
+        */
         Sparce_Matrix_Vector_Product(adjacency_matrix, vector_of_ones, nb_collaborations, nb_artists, out_links_vector, MODE_EXEC);
     else
+        /*
+            Sequential case: TO(n^2), SO(1)
+            Parallel case: TO(n^2 / p), SO(1)
+        */
         Matrix_Vector_Product(adjacency_matrix, vector_of_ones, nb_artists, nb_artists, out_links_vector, MODE_EXEC);
         
     free(vector_of_ones);
 
     debut = omp_get_wtime();
+    /*
+        Time/Space complexity :
+        Sequential case:
+            using normal representation: TO(n^2) SO(n^2)
+            using sparce representation: TO(nzero) SO(nzero * 3)
+        Parallel case:
+            using normal representation: TO(n^2 / p) SO(n^2)
+            using sparce representation: TO(nzero / p) SO(nzero * 3)
+    */
     double* transition_matrix = create_transition_matrix(adjacency_matrix, out_links_vector, nb_artists, nb_collaborations, SPARCE_REPRESENTATION, MODE_EXEC);
     fin = omp_get_wtime();
 	temps = fin - debut;
@@ -122,6 +145,15 @@ int main(int argc, char **argv) {
 
 
     // Apply PageRank Algorithm
+    /*
+        Time/Space complexity :
+        Sequential case:
+            Normal representation: TO(nb_iterations * n^2) SO(4n)
+            Sparce representation: TO(nb_iterations * nzero) SO(4n)
+        Parallel case:
+            Normal representation: TO(nb_iterations * (n^2 / p)) SO(4n)
+            Sparce representation: TO(nb_iterations * (nzero + n/p)) SO(4n)
+    */
 	debut = omp_get_wtime();
     double *pg_vector = page_rank(transition_matrix, nb_collaborations, nb_artists, 0.85, 0.00001, MODE_EXEC, SPARCE_REPRESENTATION);
 	fin = omp_get_wtime();
@@ -415,12 +447,26 @@ int parse_collaborations_csv(char* filepath, HashTable* hashtable, double* adjac
     return nb_not_zero_adjacency_matrix;
 }
 
-// TODO parallelize it
-double* create_transition_matrix(double* adjacency_matrix, double *out_links_vector, int nb_links, int nbNonZero, int sparce_rep, int parralel){
+/*
+    n*n : size adjacency matrix
+    nzero : size sparce matrix (i.e number of non-zero elements of adjacency matrix)
+
+    Time/Space complexity :
+    Sequential case:
+        using normal representation: TO(n^2) SO(n^2)
+        using sparce representation: TO(nzero) SO(nzero * 3)
+    Parallel case:
+        using normal representation: TO(n^2 / p) SO(n^2)
+        using sparce representation: TO(nzero / p) SO(nzero * 3)
+*/
+double* create_transition_matrix(double* adjacency_matrix, double *out_links_vector, int n, int nbNonZero, int sparce_rep, int parralel){
     // Initialize transition matrix
     double *transition_matrix;
     if(sparce_rep){
+        // SO(nbNonZero * 3)
         transition_matrix = calloc(nbNonZero * 3, sizeof(double));
+
+        // TO(nzero / p)
         #pragma omp parallel for schedule(static) if(parralel)
         for (int i = 0; i < nbNonZero; i++){
                 // if link exists from j to i
@@ -432,15 +478,17 @@ double* create_transition_matrix(double* adjacency_matrix, double *out_links_vec
         }
     }
     else{
-        transition_matrix = calloc(nb_links * nb_links, sizeof(double));
+        // SO(n^2)
+        transition_matrix = calloc(n * n, sizeof(double));
 
+        // TO(n^2 / p)
         #pragma omp parallel for schedule(static) if(parralel)
-        for (int i = 0; i < nb_links; i++){
-            for (int j = 0; j < nb_links; j++){
+        for (int i = 0; i < n; i++){
+            for (int j = 0; j < n; j++){
                 // if link exists from j to i
                 // then probabilty of going to i from j is 1 div number of out links of node j
-                if(adjacency_matrix[j*nb_links+i])
-                    transition_matrix[i*nb_links+j] = 1 / out_links_vector[j];
+                if(adjacency_matrix[j*n+i])
+                    transition_matrix[i*n+j] = 1 / out_links_vector[j];
             }
         }
     }

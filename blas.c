@@ -78,25 +78,28 @@ void Vector_Scalar_Product_parallel(double* x, double alpha, int n) {
 }
 
 
-// Produit scalaire 2 vecteurs
-double DotProduct(double* x, double* y, int n) {
+/* 
+    Produit scalaire 2 vecteurs
+    p : nb processors
+    Time/Space complexity :
+        Sequential case: TO(n) SO(1)
+        Parallel case: TO(n / p) SO(1)
+*/
+double DotProduct(double* x, double* y, int n, int parallel) {
     double result = 0;
+    #pragma omp parallel for schedule(static) reduction(+:result) if(parallel)
     for (int i = 0; i < n; i++){
         result += x[i] * y[i];
     }
     return result;
 }
 
-// Produit scalaire 2 vecteurs
-double DotProduct_parallel(double* x, double* y, int n) {
-    double result = 0;
-    #pragma omp parallel for schedule(static) reduction(+:result)
-    for (int i = 0; i < n; i++){
-        result += x[i] * y[i];
-    }
-    return result;
-}
-
+/*
+    n*n : size matrix A
+    Time/Space complexity: 
+        Sequential case: TO(n^2), SO(1)
+        Parallel case: TO(n^2 / p), SO(1)
+*/
 void Matrix_Vector_Product(double* A, double* v, int row, int col, double* Av, int parallel){
     if(parallel)
         Matrix_Vector_Product_parralel(A, v, row, col, Av);
@@ -104,6 +107,10 @@ void Matrix_Vector_Product(double* A, double* v, int row, int col, double* Av, i
         Matrix_Vector_Product_sequential(A, v, row, col, Av);
 }
 
+/*
+    n*n : size matrix A
+    Time/Space complexity: TO(n^2), SO(1)
+*/
 void Matrix_Vector_Product_sequential(double* A, double* v, int row, int col, double* Av){
     for(int i=0; i<row; i++) {
         Av[i] = 0;
@@ -113,27 +120,36 @@ void Matrix_Vector_Product_sequential(double* A, double* v, int row, int col, do
     }
 }
 
+/*
+    n*n : size matrix A
+    Time/Space complexity: TO(n^2 / p), SO(1)
+*/
 void Matrix_Vector_Product_parralel(double* A, double* v, int row, int col, double* Av){
     omp_set_nested(2);
-    // double Avi;
     #pragma omp parallel for schedule(static)
     for(int i=0; i<row; i++){
-        // printf("Av %d[%d]\n",omp_get_thread_num(),i);
-        // Avi = Av[i];
-        // #pragma omp parallel for schedule(static) reduction(+:Avi)
         double sum =  0;
         for(int j=0; j<col; j++) {
-            // printf("A[%d] v %d[%d]\n",i, omp_get_thread_num(),j);
             sum += A[i*col+j] * v[j];
         }
         Av[i] = sum;
-        // Av[i] = Avi;
     }
 }
 
 
-// Based on parralel
+/*
+    x= α.Ax+βy
+    n*n : size matrix A
+    nzero : size sparce matrix (i.e number of non-zero elements of matrix A)
 
+    Time/Space complexity :
+    Sequential case:
+        using normal representation: TO(n^2) SO(n)
+        using sparce representation: TO(nzero + n) SO(n)
+    Parallel case:
+        using normal representation: TO(n^2 / p) SO(n)
+        using sparce representation: TO(nzero / p + n + n/p) SO(n*p + n)
+*/
 void blas21(double* A, double* x, double* y, double alpha, double beta, int row, int col, int nbNonZeroA, int parallel, int sparce_rep){
     if(parallel){
         if(!sparce_rep)
@@ -150,10 +166,15 @@ void blas21(double* A, double* x, double* y, double alpha, double beta, int row,
 }
 
 
-// x= α.Ax+βy
+/*
+    x= α.Ax+βy
+    n : matrix size
+    Time complexity : TO(n^2)
+    Space complexity : SO(n)
+*/
 void blas21_sequential(double* A, double* x, double* y, double alpha, double beta, int row, int col){
     double* v = malloc(row * sizeof(double));
-
+    // TO(2n^2 + 3n)
     for(int i=0; i<row; i++) {
         double ax = 0;
         for(int j=0; j<col; j++) {
@@ -161,27 +182,42 @@ void blas21_sequential(double* A, double* x, double* y, double alpha, double bet
         }
         v[i] = alpha * ax + beta * y[i];
     }
-
+    // TO(n)
     memcpy(x, v, row * sizeof(double));    
     free(v);
 }
 
-// x= α.Ax+βy
+/*
+    x= α.Ax+βy
+    n*n : size matrix
+    nzero : size sparce matrix (i.e number of non-zero elements)
+    Time complexity : TO(nzero + n)
+    Space complexity : SO(n)
+*/
 void blas21_sequential_sparce(double* sparceA, double* x, double* y, double alpha, double beta, int n, int sizeSparceA){
+    // SO(n)
     double* Av = calloc(n ,sizeof(double));
     // Matrix Vector Product 
     Sparce_Matrix_Vector_Product(sparceA, x, sizeSparceA, n, Av, 0);
+    // TO(n)
     for(int j=0; j<n; j++) {
         x[j] = alpha * Av[j] + beta * y[j];
     }
     free(Av);
 }
 
-
+/*
+    x= α.Ax+βy
+    n : matrix size
+    Time complexity : TO(n^2 / p)
+    Space complexity : SO(n)
+*/
 void blas21_parallel(double* A, double* x, double* y, double alpha, double beta, int row, int col){
+    // SO(n)
     double* v = malloc(row * sizeof(double));
 
     #pragma omp parallel for schedule(static)
+    // TO(n^2 / p)
     for(int i=0; i<row; i++) {
         double ax = 0;
         for(int j=0; j<col; j++) {
@@ -194,11 +230,22 @@ void blas21_parallel(double* A, double* x, double* y, double alpha, double beta,
     free(v);
 }
 
-// x= α.Ax+βy
+/*
+    x= α.Ax+βy
+    p : nb processors
+    n*n : size matrix
+    nzero : size sparce matrix (i.e number of non-zero elements)
+    Time complexity : TO(nzero + n/p)
+    Space complexity : SO(n)
+*/
 void blas21_parallel_sparce(double* sparceA, double* x, double* y, double alpha, double beta, int n, int sizeSparceA){
+    // SO(n)
     double* Av = calloc(n ,sizeof(double));
-    // Matrix Vector Product 
+    /*
+        Matrix Vector Product : TO(nzero)
+    */
     Sparce_Matrix_Vector_Product(sparceA, x, sizeSparceA, n, Av, 1);
+    // TO(n / p)
     #pragma omp parallel for schedule(static)
     for(int j=0; j<n; j++) {
         x[j] = alpha * Av[j] + beta * y[j];
@@ -232,9 +279,15 @@ double* Matrix_Matrix_Subsctraction(double* A, double* B, int row, int col, doub
     return AB;
 }
 
-// Norme2 d'un vector
-double Norme(double* x, int n){
-    return sqrt(DotProduct(x, x, n));
+/*
+    Norme2 d'un vector
+    Time complexity : O(2n + 1)
+    Space complexity : O(1)
+*/
+double Norme(double* x, int n, int parallel){
+    // Time complexity : O(2n + 1)
+    // Space complexity : O(1)
+    return sqrt(DotProduct(x, x, n, parallel));
 }
 
 // Norme1 d'un vector
@@ -269,32 +322,47 @@ double NormeFrobenius(int nb_ligne, int nb_colonne, double* matrice){
 
 
 
-
+/*   
+    n*n : size square matrix
+    nzero : size sparce matrix (i.e number of non-zero elements in the original matrix)
+    Sequential case:
+        Time complexity :  TO(nzero)
+*/
 void Sparce_Matrix_Vector_Product(double* A, double* v, int sizeA, int sizeV, double* Av, int parallel){
-    #pragma omp parallel if(parallel)
-    {
-        double* Av_private;
-        if(parallel) Av_private = calloc(sizeV, sizeof(double));
-        #pragma omp for schedule(static)
+    // #pragma omp parallel if(parallel)
+    // {
+        // double* Av_private;
+        // if(parallel) Av_private = calloc(sizeV, sizeof(double)); // SO(n * p)
+        // TO(nzero / p)
+        // #pragma omp for schedule(static)
         for(int i=0; i<sizeA; i++) {
             int r_idx = A[i*3];
             int c_idx = A[i*3+1];
-            if(parallel)
-                Av_private[r_idx] += A[i*3+2] * v[c_idx];
-            else
+            // if(parallel)
+            //     Av_private[r_idx] += A[i*3+2] * v[c_idx];
+            // else
                 Av[r_idx] += A[i*3+2] * v[c_idx];
         }
-        if(parallel){
-            #pragma omp critical
-            {
-                for(int i=0; i<sizeV; i++)
-                    Av[i] += Av_private[i];
-            }
-            free(Av_private);
-        }
-    }
+        // TO(n*p)
+        // if(parallel){
+        //     #pragma omp critical
+        //     {
+        //         for(int i=0; i<sizeV; i++)
+        //             Av[i] += Av_private[i];
+        //     }
+        //     free(Av_private);
+        // }
+    // }
 }
 
+/*
+    Count number of non-zero elements of matrix A
+    n*n : size square matrix A
+    p : number of processors
+    Time/ Space complexity:
+        Sequential case: TO(n^2), SO(1)
+        Parallel case: TO(n^2 / p)
+*/
 int count_zero_matrix(double *A, int row, int col){
 	int nbNonZero = 0;
     for(int i=0; i<row; i++) {
@@ -306,17 +374,23 @@ int count_zero_matrix(double *A, int row, int col){
     return nbNonZero;
 }
 
-// Convert normal matrix representation to sparce matrix representation
+/* 
+    Convert normal matrix representation to sparce matrix representation
+    Time/Space complexity:
+        sequential case: TO(n^2), SO(nzero * 3)
+        parallel case:
+*/
 double* matrix_to_sparce(double *A, int row, int col, int* nbNonZero){
 	// If nbNonZero not known
 	if(*nbNonZero < 0){
 		*nbNonZero = count_zero_matrix(A, row, col);
 	}
 
-	double *sparceA = calloc(*nbNonZero * 3,sizeof(double));
+	double *sparceA = calloc(*nbNonZero * 3,sizeof(double)); // SO(nzero * 3)
 
-	// Making of new matrix
+	// Making of new matrix 
 	int k = 0;
+    // TO(n^2)
 	for (int i = 0; i < row; i++)
 		for (int j = 0; j < col; j++)
 			if (A[i*col+j] != 0)
