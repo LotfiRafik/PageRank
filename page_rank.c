@@ -4,6 +4,7 @@
 #include "page_rank.h"
 #include <string.h>
 #include <time.h>
+#include <math.h>
 
 /*
     Page Rank Algorithm 
@@ -108,7 +109,17 @@ double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int par
         }
 
         // verifier la condition de convergence
-        error = Norme(y, n, parallel_mode);
+        error = 0;
+        // calculer la norme : ||x[i] - x_prec[i]||
+        #pragma omp parallel for schedule(static) reduction(+:result) if(parallel_mode)
+        for (int i = 0; i < n; i++){
+            double y = x[i] - x_prec[i];
+            error += y * y;
+        }
+        error = sqrt(error);
+
+
+        // error = Norme(y, n, parallel_mode);
 
     } while(error > p);
 
