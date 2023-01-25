@@ -85,7 +85,7 @@ double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int par
                 using normal representation: TO(n^2 / p) SO(n)
                 using sparce representation: TO(nzero + n/p) SO(n*p + n)
         */
-        blas21(A, x, teleportation_vector, B, 1-B, n, n, nbNonZeroA, parallel_mode, sparce_rep);
+        blas21(A, x_prec, teleportation_vector, x, B, 1-B, n, n, nbNonZeroA, parallel_mode, sparce_rep);
 
         /* TODO 
             Check with quentin if we use norme 1 or norme 2

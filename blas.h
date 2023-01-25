@@ -21,7 +21,7 @@ double* transposeMatrix(int row, int col, double* A);
         using normal representation: TO(n^2 / p) SO(n)
         using sparce representation: TO(nzero / p + n + n/p) SO(n*p + n)
 */
-void blas21(double* A, double* x, double* y, double alpha, double beta, int row, int col, int nbNonZeroA, int parallel, int sparce_rep);
+void blas21(double* A, double* x, double* y, double* vres, double alpha, double beta, int row, int col, int nbNonZeroA, int parallel, int sparce_rep);
 
 /*
     x= α.Ax+βy
@@ -29,14 +29,14 @@ void blas21(double* A, double* x, double* y, double alpha, double beta, int row,
     Time complexity : TO(n^2 / p)
     Space complexity : SO(n)
 */
-void blas21_parallel(double* A, double* x, double* y, double alpha, double beta, int row, int col);
+void blas21_parallel(double* A, double* x, double* y, double* vres, double alpha, double beta, int row, int col);
 /*
     x= α.Ax+βy
     n : matrix size
     Time complexity : TO(n^2)
     Space complexity : SO(n)
 */
-void blas21_sequential(double* A, double* x, double* y, double alpha, double beta, int row, int col);
+void blas21_sequential(double* A, double* x, double* y, double* vres, double alpha, double beta, int row, int col);
 /*
     x= α.Ax+βy
     p : nb processors
@@ -45,7 +45,7 @@ void blas21_sequential(double* A, double* x, double* y, double alpha, double bet
     Time complexity : TO(nzero / p + n + n/p)
     Space complexity : SO(n*p + n)
 */
-void blas21_parallel_sparce(double* sparceA, double* x, double* y, double alpha, double beta, int n, int sizeSparceA);
+void blas21_parallel_sparce(double* sparceA, double* x, double* y, double* vres, double alpha, double beta, int n, int sizeSparceA);
 /*
     x= α.Ax+βy
     n*n : size matrix
@@ -53,7 +53,7 @@ void blas21_parallel_sparce(double* sparceA, double* x, double* y, double alpha,
     Time complexity : TO(nzero + n)
     Space complexity : SO(n)
 */
-void blas21_sequential_sparce(double* sparceA, double* x, double* y, double alpha, double beta, int n, int sizeSparceA);
+void blas21_sequential_sparce(double* sparceA, double* x, double* y, double* vres, double alpha, double beta, int n, int sizeSparceA);
 
 void Vector_Scalar_Product(double* x, double alpha, int n);
 void Vector_Scalar_Product_parallel(double* x, double alpha, int n);

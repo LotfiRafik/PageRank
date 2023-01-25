@@ -138,7 +138,7 @@ void Matrix_Vector_Product_parralel(double* A, double* v, int row, int col, doub
 
 
 /*
-    x= α.Ax+βy
+    vres = α.Ax+βy
     n*n : size matrix A
     nzero : size sparce matrix (i.e number of non-zero elements of matrix A)
 
@@ -150,18 +150,18 @@ void Matrix_Vector_Product_parralel(double* A, double* v, int row, int col, doub
         using normal representation: TO(n^2 / p) SO(n)
         using sparce representation: TO(nzero / p + n + n/p) SO(n*p + n)
 */
-void blas21(double* A, double* x, double* y, double alpha, double beta, int row, int col, int nbNonZeroA, int parallel, int sparce_rep){
+void blas21(double* A, double* x, double* y, double* vres, double alpha, double beta, int row, int col, int nbNonZeroA, int parallel, int sparce_rep){
     if(parallel){
         if(!sparce_rep)
-            blas21_parallel(A, x, y, alpha, beta, row, col);
+            blas21_parallel(A, x, y, vres, alpha, beta, row, col);
         else
-            blas21_parallel_sparce(A, x, y, alpha, beta, col, nbNonZeroA);
+            blas21_parallel_sparce(A, x, y, vres, alpha, beta, col, nbNonZeroA);
     }
     else{
         if(!sparce_rep)
-            blas21_sequential(A, x, y, alpha, beta, row, col);
+            blas21_sequential(A, x, y, vres, alpha, beta, row, col);
         else
-            blas21_sequential_sparce(A, x, y, alpha, beta, col, nbNonZeroA);
+            blas21_sequential_sparce(A, x, y, vres, alpha, beta, col, nbNonZeroA);
     }
 }
 
@@ -172,19 +172,19 @@ void blas21(double* A, double* x, double* y, double alpha, double beta, int row,
     Time complexity : TO(n^2)
     Space complexity : SO(n)
 */
-void blas21_sequential(double* A, double* x, double* y, double alpha, double beta, int row, int col){
-    double* v = malloc(row * sizeof(double));
+void blas21_sequential(double* A, double* x, double* y, double* vres, double alpha, double beta, int row, int col){
+    // double* v = malloc(row * sizeof(double));
     // TO(2n^2 + 3n)
     for(int i=0; i<row; i++) {
         double ax = 0;
         for(int j=0; j<col; j++) {
             ax += A[i*col+j] * x[j];
         }
-        v[i] = alpha * ax + beta * y[i];
+        vres[i] = alpha * ax + beta * y[i];
     }
     // TO(n)
-    memcpy(x, v, row * sizeof(double));    
-    free(v);
+    // memcpy(x, v, row * sizeof(double));    
+    // free(v);
 }
 
 /*
@@ -194,27 +194,27 @@ void blas21_sequential(double* A, double* x, double* y, double alpha, double bet
     Time complexity : TO(nzero + n)
     Space complexity : SO(n)
 */
-void blas21_sequential_sparce(double* sparceA, double* x, double* y, double alpha, double beta, int n, int sizeSparceA){
+void blas21_sequential_sparce(double* sparceA, double* x, double* y, double* vres, double alpha, double beta, int n, int sizeSparceA){
     // SO(n)
     double* Av = calloc(n ,sizeof(double));
     // Matrix Vector Product 
     Sparce_Matrix_Vector_Product(sparceA, x, sizeSparceA, n, Av, 0);
     // TO(n)
     for(int j=0; j<n; j++) {
-        x[j] = alpha * Av[j] + beta * y[j];
+        vres[j] = alpha * Av[j] + beta * y[j];
     }
     free(Av);
 }
 
 /*
-    x= α.Ax+βy
+    vres= α.Ax+βy
     n : matrix size
     Time complexity : TO(n^2 / p)
     Space complexity : SO(n)
 */
-void blas21_parallel(double* A, double* x, double* y, double alpha, double beta, int row, int col){
+void blas21_parallel(double* A, double* x, double* y, double* vres, double alpha, double beta, int row, int col){
     // SO(n)
-    double* v = malloc(row * sizeof(double));
+    // double* v = malloc(row * sizeof(double));
 
     #pragma omp parallel for schedule(static)
     // TO(n^2 / p)
@@ -223,22 +223,22 @@ void blas21_parallel(double* A, double* x, double* y, double alpha, double beta,
         for(int j=0; j<col; j++) {
             ax += A[i*col+j] * x[j];
         }
-        v[i] = alpha * ax + beta * y[i];
+        vres[i] = alpha * ax + beta * y[i];
     }
 
-    memcpy(x, v, row * sizeof(double));    
-    free(v);
+    // memcpy(x, v, row * sizeof(double));    
+    // free(v);
 }
 
 /*
-    x= α.Ax+βy
+    vres = α.Ax+βy
     p : nb processors
     n*n : size matrix
     nzero : size sparce matrix (i.e number of non-zero elements)
     Time complexity : TO(nzero + n/p)
     Space complexity : SO(n)
 */
-void blas21_parallel_sparce(double* sparceA, double* x, double* y, double alpha, double beta, int n, int sizeSparceA){
+void blas21_parallel_sparce(double* sparceA, double* x, double* y, double* vres, double alpha, double beta, int n, int sizeSparceA){
     // SO(n)
     double* Av = calloc(n ,sizeof(double));
     /*
@@ -248,7 +248,7 @@ void blas21_parallel_sparce(double* sparceA, double* x, double* y, double alpha,
     // TO(n / p)
     #pragma omp parallel for schedule(static)
     for(int j=0; j<n; j++) {
-        x[j] = alpha * Av[j] + beta * y[j];
+        vres[j] = alpha * Av[j] + beta * y[j];
     }
     free(Av);
 }
