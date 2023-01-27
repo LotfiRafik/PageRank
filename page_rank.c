@@ -40,7 +40,7 @@ double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int par
 
 
     // TO(n / p)
-    #pragma omp for schedule(static) reduction(+:sum_teleportation_vector) if(parallel_mode)
+    #pragma omp parallel for schedule(static) reduction(+:sum_teleportation_vector) if(parallel_mode)
     for (size_t i = 0; i < n; i++)
     {
         int r = rand() % 10 + 1;    // Returns a pseudo-random integer between 1 and 10.
@@ -49,7 +49,7 @@ double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int par
     }
 
     // TO(n / p)
-    #pragma omp for schedule(static) if(parallel_mode)
+    #pragma omp parallel for schedule(static) if(parallel_mode)
     for (size_t i = 0; i < n; i++)
     {
         // initializer le vecteur de depart
@@ -103,7 +103,7 @@ double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int par
         double y[n]; 
 
         // TO(n / p)
-        #pragma omp for schedule(static) if(parallel_mode)
+        #pragma omp parallel for schedule(static) if(parallel_mode)
         for (int i = 0; i<n; i++){
            y[i] = x[i] - x_prec[i]; 
         }
@@ -111,7 +111,7 @@ double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int par
         // verifier la condition de convergence
         error = 0;
         // calculer la norme : ||x[i] - x_prec[i]||
-        #pragma omp parallel for schedule(static) reduction(+:result) if(parallel_mode)
+        #pragma omp parallel for schedule(static) reduction(+:error) if(parallel_mode)
         for (int i = 0; i < n; i++){
             double y = x[i] - x_prec[i];
             error += y * y;
