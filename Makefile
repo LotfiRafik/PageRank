@@ -4,16 +4,16 @@ EXEC = a.out
 all: $(EXEC)
 
 main.o: main.c
-	$(CC) -c main.c
+	$(CC) -c main.c -fopenmp
 
 hashtable.o: hashtable.c
-	$(CC) -c hashtable.c
+	$(CC) -c hashtable.c -fopenmp
 
 blas.o: blas.c
-	$(CC) -c blas.c
+	$(CC) -c blas.c -fopenmp
 
 page_rank.o: page_rank.c
-	$(CC) -c page_rank.c
+	$(CC) -c page_rank.c -fopenmp
 
 $(EXEC): main.o hashtable.o blas.o page_rank.o
 	$(CC) -o $(EXEC) main.o hashtable.o blas.o page_rank.o -fopenmp -lm
