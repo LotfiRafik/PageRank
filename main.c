@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     HashTable* hashtable;
 
     char* relative_path = "./Deezer-small-DS/";
-    char datasets[][254] = {"Adele/", "Taylor Swift/", "David Guetta/", "Exo Td/"};
+    char datasets[][254] = {"Adele/", "Taylor Swift/", "David Guetta/", "Ed Sheeran/", "Exo Td/"};
     char files[][254] = {"InfoArtist.csv", "collaborations.csv", "level.csv"};
 
     char file_path[254] = "";
@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
 
 
     // Dataset to use
-    int dataset_idx = 3;
+    int dataset_idx = 0;
     // 1 : Parallel , 0 : Sequential
     int MODE_EXEC = 1;
     // 1 : Use sparce matrix representation, 0 : Use normal matrix representation
