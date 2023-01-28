@@ -51,9 +51,9 @@ LinkedList* linkedlist_insert(LinkedList* list, Ht_item* item) {
         list->next = node;
         return list;
     }
-
+    // Iterate until last node of the linkedlist
     LinkedList* temp = list;
-    while (temp->next->next) {
+    while (temp->next) {
         temp = temp->next;
     }
     
