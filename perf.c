@@ -22,6 +22,7 @@ int main(int argc, char **argv) {
             *opposite_rep_adjacency_matrix,
             *adjacency_matrix;
     int matrix_dim, nbNonZero = -1;
+    int i;
 
     if(argc < 6){
         fprintf(stderr, "Usage: %s path_adjancecy_matrix_file matrix_dim parallel<0|1> sparce<0|1> outputFiles<0|1>\n", argv[0]);
@@ -74,10 +75,10 @@ int main(int argc, char **argv) {
     // SO(n)
     double *vector_of_ones = calloc(matrix_dim,sizeof(double));
 
+    
     // TO(n / p)
-    #pragma omp parallel for schedule(static) if(MODE_EXEC)
-    int i;
-for(i = 0; i < matrix_dim; i++){
+    #pragma omp parallel for schedule(static) private(i) if(MODE_EXEC)
+    for(i = 0; i < matrix_dim; i++){
         vector_of_ones[i] = 1;
     }
 
@@ -212,14 +213,15 @@ for(j = 0; j < col; j++){
 double* create_transition_matrix(double* adjacency_matrix, double *out_links_vector, int n, int nbNonZero, int sparce_rep, int parralel){
     // Initialize transition matrix
     double *transition_matrix;
+    int i;
     if(sparce_rep){
         // SO(nbNonZero * 3)
         transition_matrix = calloc(nbNonZero * 3, sizeof(double));
 
         // TO(nzero / p)
-        #pragma omp parallel for schedule(static) if(parralel)
-        int i;
-for(i = 0; i < nbNonZero; i++){
+        #pragma omp parallel for schedule(static) private(i) if(parralel)
+        
+        for(i = 0; i < nbNonZero; i++){
                 // if link exists from j to i
                 // then probabilty of going to i from j is 1 div number of out links of node j
                 int j = adjacency_matrix[i*3];
@@ -233,11 +235,10 @@ for(i = 0; i < nbNonZero; i++){
         transition_matrix = calloc(n * n, sizeof(double));
 
         // TO(n^2 / p)
-        #pragma omp parallel for schedule(static) if(parralel)
-        int i;
-for(i = 0; i < n; i++){
-            int j;
-for(j = 0; j < n; j++){
+        #pragma omp parallel for schedule(static) private(i) if(parralel)
+        for(i = 0; i < n; i++){
+                    int j;
+        for(j = 0; j < n; j++){
                 // if link exists from j to i
                 // then probabilty of going to i from j is 1 div number of out links of node j
                 if(adjacency_matrix[j*n+i])
