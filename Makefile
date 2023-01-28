@@ -3,6 +3,12 @@ EXEC = a.out
 
 all: $(EXEC)
 
+perf:  perf.o hashtable.o blas.o page_rank.o
+	$(CC) -o perf perf.o hashtable.o blas.o page_rank.o -fopenmp -lm
+
+perf.o: perf.c
+	$(CC) -c perf.c -fopenmp
+
 main.o: main.c
 	$(CC) -c main.c -fopenmp
 

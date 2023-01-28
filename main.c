@@ -107,9 +107,11 @@ int main(int argc, char **argv) {
     // SO(n)
     double *vector_of_ones = calloc(nb_artists,sizeof(double));
 
+    int i;
+
     // TO(n / p)
     #pragma omp parallel for schedule(static) if(MODE_EXEC)
-    for (int i = 0; i < nb_artists; i++){
+    for(i = 0; i < nb_artists; i++){
         vector_of_ones[i] = 1;
     }
 
@@ -272,7 +274,8 @@ char **split(char *string, char seperator, int* nb_tokens){
 }
 
 void free_splitted_tokens(char** tokens, int size){
-    for (int i=0; i<size; i++)
+    int i;
+for(i=0; i<size; i++)
         free(tokens[i]);
         
     free(tokens);
@@ -285,8 +288,10 @@ void write_adjacency_matrix(int row, int col, double* matrix, char* filepath){
         perror("Error opening file");
         exit(1);
     }
-    for (int i = 0; i < row; i++){
-        for (int j = 0; j < col; j++){
+    int i;
+for(i = 0; i < row; i++){
+        int j;
+for(j = 0; j < col; j++){
             fprintf(stream,"%d ", (int) matrix[i*col+j]);
         }
         fprintf(stream,"\n");
@@ -302,8 +307,10 @@ void write_matrix(int row, int col, double* matrix, char* filepath){
         perror("Error opening file");
         exit(1);
     }
-    for (int i = 0; i < row; i++){
-        for (int j = 0; j < col; j++){
+    int i;
+for(i = 0; i < row; i++){
+        int j;
+for(j = 0; j < col; j++){
             fprintf(stream,"%0.4f ", matrix[i*col+j]);
         }
         fprintf(stream,"\n");
@@ -462,13 +469,14 @@ int parse_collaborations_csv(char* filepath, HashTable* hashtable, double* adjac
 double* create_transition_matrix(double* adjacency_matrix, double *out_links_vector, int n, int nbNonZero, int sparce_rep, int parralel){
     // Initialize transition matrix
     double *transition_matrix;
+    int i;
+
     if(sparce_rep){
         // SO(nbNonZero * 3)
         transition_matrix = calloc(nbNonZero * 3, sizeof(double));
-
         // TO(nzero / p)
         #pragma omp parallel for schedule(static) if(parralel)
-        for (int i = 0; i < nbNonZero; i++){
+        for(i = 0; i < nbNonZero; i++){
                 // if link exists from j to i
                 // then probabilty of going to i from j is 1 div number of out links of node j
                 int j = adjacency_matrix[i*3];
@@ -483,8 +491,9 @@ double* create_transition_matrix(double* adjacency_matrix, double *out_links_vec
 
         // TO(n^2 / p)
         #pragma omp parallel for schedule(static) if(parralel)
-        for (int i = 0; i < n; i++){
-            for (int j = 0; j < n; j++){
+for(i = 0; i < n; i++){
+            int j;
+for(j = 0; j < n; j++){
                 // if link exists from j to i
                 // then probabilty of going to i from j is 1 div number of out links of node j
                 if(adjacency_matrix[j*n+i])

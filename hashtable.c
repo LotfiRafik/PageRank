@@ -87,7 +87,8 @@ Ht_item* create_item(int key, int value) {
 LinkedList** create_overflow_buckets(HashTable* table) {
     // Create the overflow buckets; an array of linkedlists
     LinkedList** buckets = (LinkedList**) calloc (table->size, sizeof(LinkedList*));
-    for (int i=0; i<table->size; i++)
+    int i;
+for(i=0; i<table->size; i++)
                    buckets[i] = NULL;
     return buckets;
 }
@@ -95,7 +96,8 @@ LinkedList** create_overflow_buckets(HashTable* table) {
 void free_overflow_buckets(HashTable* table) {
     // Free all the overflow bucket lists
     LinkedList** buckets = table->overflow_buckets;
-    for (int i=0; i<table->size; i++)
+    int i;
+for(i=0; i<table->size; i++)
           free_linkedlist(buckets[i]);
     free(buckets);
 }
@@ -106,7 +108,8 @@ HashTable* create_table(int size) {
     table->size = size;
     table->count = 0;
     table->items = (Ht_item**) calloc (table->size, sizeof(Ht_item*));
-    for (int i=0; i<table->size; i++)
+    int i;
+for(i=0; i<table->size; i++)
         table->items[i] = NULL;
     table->overflow_buckets = create_overflow_buckets(table);
 
@@ -120,7 +123,8 @@ void free_item(Ht_item* item) {
 
 void free_table(HashTable* table) {
     // Frees the table
-    for (int i=0; i<table->size; i++) {
+    int i;
+for(i=0; i<table->size; i++) {
         Ht_item* item = table->items[i];
         if (item != NULL)
             free_item(item);

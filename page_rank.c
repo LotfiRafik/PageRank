@@ -101,18 +101,18 @@ double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int par
             Space complexity : Auxiliary + Space = O(n)
         */
         double y[n]; 
-
+        int i;
         // TO(n / p)
-        #pragma omp parallel for schedule(static) if(parallel_mode)
-        for (int i = 0; i<n; i++){
+        #pragma omp parallel for schedule(static) private(i) if(parallel_mode)
+        for(i = 0; i<n; i++){
            y[i] = x[i] - x_prec[i]; 
         }
 
         // verifier la condition de convergence
         error = 0;
         // calculer la norme : ||x[i] - x_prec[i]||
-        #pragma omp parallel for schedule(static) reduction(+:error) if(parallel_mode)
-        for (int i = 0; i < n; i++){
+        #pragma omp parallel for schedule(static) reduction(+:error) private(i) if(parallel_mode)
+        for(i = 0; i < n; i++){
             double y = x[i] - x_prec[i];
             error += y * y;
         }
