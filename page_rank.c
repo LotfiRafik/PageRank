@@ -35,13 +35,14 @@ double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int par
             error;
 
     int sum_teleportation_vector = 0;
+    int i;
 
     srand(time(NULL));   // Initialization, should only be called once.
 
 
     // TO(n / p)
-    #pragma omp parallel for schedule(static) reduction(+:sum_teleportation_vector) if(parallel_mode)
-    for (size_t i = 0; i < n; i++)
+    #pragma omp parallel for schedule(static) private(i) reduction(+:sum_teleportation_vector) if(parallel_mode)
+    for (i = 0; i < n; i++)
     {
         int r = rand() % 10 + 1;    // Returns a pseudo-random integer between 1 and 10.
         sum_teleportation_vector += r;
@@ -49,8 +50,8 @@ double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int par
     }
 
     // TO(n / p)
-    #pragma omp parallel for schedule(static) if(parallel_mode)
-    for (size_t i = 0; i < n; i++)
+    #pragma omp parallel for schedule(static) private(i) if(parallel_mode)
+    for (i = 0; i < n; i++)
     {
         // initializer le vecteur de depart
         x[i] = 1./n;
@@ -101,7 +102,6 @@ double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int par
             Space complexity : Auxiliary + Space = O(n)
         */
         double y[n]; 
-        int i;
         // TO(n / p)
         #pragma omp parallel for schedule(static) private(i) if(parallel_mode)
         for(i = 0; i<n; i++){
