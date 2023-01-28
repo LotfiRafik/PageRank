@@ -143,6 +143,7 @@ void handle_collision(HashTable* table, int index, Ht_item* item) {
         // We need to create the list
         head = allocate_list();
         head->item = item;
+        head->next = NULL;
         table->overflow_buckets[index] = head;
         return;
     }
