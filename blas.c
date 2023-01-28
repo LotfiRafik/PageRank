@@ -54,8 +54,10 @@ for(j = 0; j < col; j++){
 
 double* transposeMatrix(int row, int col, double* A){
     double* AT = calloc(row*col, sizeof(double));
-    for(int i=0; i<row; i++) {
-        for(int j=0; j<col; j++) {
+    int i;
+for(i=0; i<row; i++) {
+        int j;
+for(j=0; j<col; j++) {
             AT[j*row+i] = A[i*col+j];
         }
     }
@@ -122,9 +124,11 @@ void Matrix_Vector_Product(double* A, double* v, int row, int col, double* Av, i
     Time/Space complexity: TO(n^2), SO(1)
 */
 void Matrix_Vector_Product_sequential(double* A, double* v, int row, int col, double* Av){
-    for(int i=0; i<row; i++) {
+    int i;
+for(i=0; i<row; i++) {
         Av[i] = 0;
-        for(int j=0; j<col; j++) {
+        int j;
+for(j=0; j<col; j++) {
             Av[i] += A[i*col+j] * v[j];
         }
     }
@@ -187,9 +191,11 @@ void blas21(double* A, double* x, double* y, double* vres, double alpha, double 
 void blas21_sequential(double* A, double* x, double* y, double* vres, double alpha, double beta, int row, int col){
     // double* v = malloc(row * sizeof(double));
     // TO(2n^2 + 3n)
-    for(int i=0; i<row; i++) {
+    int i;
+for(i=0; i<row; i++) {
         double ax = 0;
-        for(int j=0; j<col; j++) {
+        int j;
+for(j=0; j<col; j++) {
             ax += A[i*col+j] * x[j];
         }
         vres[i] = alpha * ax + beta * y[i];
@@ -212,7 +218,8 @@ void blas21_sequential_sparce(double* sparceA, double* x, double* y, double* vre
     // Matrix Vector Product 
     Sparce_Matrix_Vector_Product(sparceA, x, sizeSparceA, n, Av, 0);
     // TO(n)
-    for(int j=0; j<n; j++) {
+    int j;
+for(j=0; j<n; j++) {
         vres[j] = alpha * Av[j] + beta * y[j];
     }
     free(Av);
@@ -232,7 +239,8 @@ void blas21_parallel(double* A, double* x, double* y, double* vres, double alpha
     // TO(n^2 / p)
     for(i = 0; i<row; i++) {
         double ax = 0;
-        for(int j=0; j<col; j++) {
+        int j;
+for(j=0; j<col; j++) {
             ax += A[i*col+j] * x[j];
         }
         vres[i] = alpha * ax + beta * y[i];
@@ -270,9 +278,12 @@ void blas21_parallel_sparce(double* sparceA, double* x, double* y, double* vres,
 double* Matrix_Matrix_Product(double* A, double* B, int rowA, int colA, int colB, double* AB){
     if(AB == NULL)
         AB = calloc(rowA*colB, sizeof(double));
-    for(int i=0; i<rowA; i++) {
-        for(int k=0; k<colB; k++) {
-            for(int j=0; j<colA; j++) {
+    int i;
+for(i=0; i<rowA; i++) {
+        int k;
+for(k=0; k<colB; k++) {
+            int j;
+for(j=0; j<colA; j++) {
                 AB[i*colB+k] += A[i*colA+j] * B[j*colB+k];
             }
         }
@@ -284,8 +295,10 @@ double* Matrix_Matrix_Product(double* A, double* B, int rowA, int colA, int colB
 double* Matrix_Matrix_Subsctraction(double* A, double* B, int row, int col, double* AB){
     if(AB == NULL)
         AB = calloc(row*col, sizeof(double));
-    for(int i=0; i<row; i++) {
-        for(int k=0; k<col; k++) {
+    int i;
+for(i=0; i<row; i++) {
+        int k;
+for(k=0; k<col; k++) {
             AB[i*col+k] = A[i*col+k] - B[i*col+k];
         }
     }
@@ -327,8 +340,10 @@ double Norme_One_parallel(double* x, int n){
 // La norme Frobenius d’une matrice
 double NormeFrobenius(int nb_ligne, int nb_colonne, double* matrice){
     double result = 0;
-    for(int i=0; i<nb_ligne; i++) {
-        for(int j=0; j<nb_colonne; j++) {
+    int i;
+for(i=0; i<nb_ligne; i++) {
+        int j;
+for(j=0; j<nb_colonne; j++) {
             result += pow(matrice[i*nb_colonne+j], 2);
         }
     }
@@ -363,7 +378,8 @@ void Sparce_Matrix_Vector_Product(double* A, double* v, int sizeA, int sizeV, do
         // if(parallel){
         //     #pragma omp critical
         //     {
-        //         for(int i=0; i<sizeV; i++)
+        //         int i;
+        //      for(i=0; i<sizeV; i++)
         //             Av[i] += Av_private[i];
         //     }
         //     free(Av_private);
@@ -381,8 +397,10 @@ void Sparce_Matrix_Vector_Product(double* A, double* v, int sizeA, int sizeV, do
 */
 int count_zero_matrix(double *A, int row, int col){
 	int nbNonZero = 0;
-    for(int i=0; i<row; i++) {
-        for(int j=0; j<col; j++) {
+    int i;
+for(i=0; i<row; i++) {
+        int j;
+for(j=0; j<col; j++) {
             if (A[i*col+j] != 0)
 				nbNonZero++;
         }
