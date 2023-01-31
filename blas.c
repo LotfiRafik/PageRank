@@ -119,6 +119,13 @@ void Matrix_Vector_Product(double* A, double* v, int row, int col, double* Av, i
         Matrix_Vector_Product_sequential(A, v, row, col, Av);
 }
 
+void Matrix_Vector_Product_uchar(unsigned char* A, double* v, int row, int col, double* Av, int parallel){
+    if(parallel)
+        Matrix_Vector_Product_parralel_uchar(A, v, row, col, Av);
+    else
+        Matrix_Vector_Product_sequential_uchar(A, v, row, col, Av);
+}
+
 /*
     n*n : size matrix A
     Time/Space complexity: TO(n^2), SO(1)
@@ -129,6 +136,17 @@ for(i=0; i<row; i++) {
         Av[i] = 0;
         int j;
 for(j=0; j<col; j++) {
+            Av[i] += A[i*col+j] * v[j];
+        }
+    }
+}
+
+void Matrix_Vector_Product_sequential_uchar(unsigned char* A, double* v, int row, int col, double* Av){
+    int i;
+    for(i=0; i<row; i++) {
+        Av[i] = 0;
+        int j;
+        for(j=0; j<col; j++) {
             Av[i] += A[i*col+j] * v[j];
         }
     }
@@ -151,6 +169,21 @@ void Matrix_Vector_Product_parralel(double* A, double* v, int row, int col, doub
         Av[i] = sum;
     }
 }
+
+void Matrix_Vector_Product_parralel_uchar(unsigned char* A, double* v, int row, int col, double* Av){
+    omp_set_nested(2);
+    int i;
+    #pragma omp parallel for schedule(static) private(i)
+    for(i = 0; i<row; i++){
+        double sum =  0;
+        int j;
+        for(j=0; j<col; j++) {
+            sum += A[i*col+j] * v[j];
+        }
+        Av[i] = sum;
+    }
+}
+
 
 
 /*
@@ -359,33 +392,26 @@ for(j=0; j<nb_colonne; j++) {
         Time complexity :  TO(nzero)
 */
 void Sparce_Matrix_Vector_Product(double* A, double* v, int sizeA, int sizeV, double* Av, int parallel){
-    // #pragma omp parallel if(parallel)
-    // {
-        // double* Av_private;
-        // if(parallel) Av_private = calloc(sizeV, sizeof(double)); // SO(n * p)
-        // TO(nzero / p)
-        // #pragma omp for schedule(static)
+
         int i;
         for(i=0; i<sizeA; i++) {
             int r_idx = A[i*3];
             int c_idx = A[i*3+1];
-            // if(parallel)
-            //     Av_private[r_idx] += A[i*3+2] * v[c_idx];
-            // else
-                Av[r_idx] += A[i*3+2] * v[c_idx];
+            Av[r_idx] += A[i*3+2] * v[c_idx];
         }
-        // TO(n*p)
-        // if(parallel){
-        //     #pragma omp critical
-        //     {
-        //         int i;
-        //      for(i=0; i<sizeV; i++)
-        //             Av[i] += Av_private[i];
-        //     }
-        //     free(Av_private);
-        // }
-    // }
 }
+
+void Sparce_Matrix_Vector_Product_int(int* A, double* v, int sizeA, int sizeV, double* Av, int parallel){
+
+        int i;
+        for(i=0; i<sizeA; i++) {
+            int r_idx = A[i*3];
+            int c_idx = A[i*3+1];
+            Av[r_idx] += A[i*3+2] * v[c_idx];
+        }
+}
+
+
 
 /*
     Count number of non-zero elements of matrix A

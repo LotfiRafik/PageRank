@@ -13,8 +13,8 @@ void free_splitted_tokens(char** tokens, int size);
 void write_adjacency_matrix(int row, int col, double* matrix, char* filepath);
 void write_matrix(int row, int col, double* matrix, char* filepath);
 int parse_infoArtist_csv(char* filepath, HashTable** hashtable);
-int parse_collaborations_csv(char* filepath, HashTable* hashtable, double* adjacency_matrix, int nb_artists);
-double* create_transition_matrix(double* adjacency_matrix, double *out_links_vector, int n, int nbNonZero, int sparce_rep, int parralel);
+int parse_collaborations_csv(char* filepath, HashTable* hashtable, unsigned char** adjacency_matrix, int** sparce_adjacency_matrix, int nb_artists, int sparce_rep);
+double* create_transition_matrix(unsigned char* adjacency_matrix, int* sparce_adjacency_matrix, int n, int nbNonZero, int sparce_rep, int parralel);
 
 // *****************************
 
@@ -23,6 +23,9 @@ double* create_transition_matrix(double* adjacency_matrix, double *out_links_vec
 int main(int argc, char **argv) {
     double temps, debut,fin,
             *opposite_rep_adjacency_matrix;
+    unsigned char *adjacency_matrix;
+    int *sparce_adjacency_matrix;
+
     HashTable* hashtable;
 
     char* relative_path = "./Deezer-small-DS/";
@@ -80,19 +83,18 @@ int main(int argc, char **argv) {
 	debut = omp_get_wtime();
     // Initialize adjacency matrix 
     // SO(n^2)
-    double *adjacency_matrix = calloc(nb_artists * nb_artists, sizeof(double));
-    int nb_collaborations = parse_collaborations_csv(collaborations_file_path, hashtable, adjacency_matrix, nb_artists);
+    int nb_collaborations = parse_collaborations_csv(collaborations_file_path, hashtable, &adjacency_matrix, &sparce_adjacency_matrix, nb_artists, SPARCE_REPRESENTATION);
     if(nb_collaborations < 0){
         perror("Error : can not parse collaborations file");
         exit(-1);
     }
 
     // Create sparce matrix representation of the adjacency matrix
-    if(SPARCE_REPRESENTATION){
-        opposite_rep_adjacency_matrix = adjacency_matrix;
-        // TO(n^2), SO(nzero * 3)
-        adjacency_matrix = matrix_to_sparce(adjacency_matrix, nb_artists, nb_artists, &nb_collaborations);
-    }
+    // if(SPARCE_REPRESENTATION){
+    //     opposite_rep_adjacency_matrix = adjacency_matrix;
+    //     // TO(n^2), SO(nzero * 3)
+    //     adjacency_matrix = matrix_to_sparce(adjacency_matrix, nb_artists, nb_artists, &nb_collaborations);
+    // }
 
 
     fin = omp_get_wtime();
@@ -102,60 +104,13 @@ int main(int argc, char **argv) {
 
     // CREATE TRANSITION MATRIX
     debut = omp_get_wtime();
-    // SO(n)
-    double *out_links_vector = calloc(nb_artists,sizeof(double));
-    // SO(n)
-    double *vector_of_ones = calloc(nb_artists,sizeof(double));
-
-    int i;
-
-    // TO(n / p)
-    #pragma omp parallel for schedule(static) if(MODE_EXEC)
-    for(i = 0; i < nb_artists; i++){
-        vector_of_ones[i] = 1;
-    }
-
-    // Get out_links_vectors
-    if(SPARCE_REPRESENTATION)
-        /*
-            Time complexity : TO(nzero)
-        */
-        Sparce_Matrix_Vector_Product(adjacency_matrix, vector_of_ones, nb_collaborations, nb_artists, out_links_vector, MODE_EXEC);
-    else
-        /*
-            Sequential case: TO(n^2), SO(1)
-            Parallel case: TO(n^2 / p), SO(1)
-        */
-        Matrix_Vector_Product(adjacency_matrix, vector_of_ones, nb_artists, nb_artists, out_links_vector, MODE_EXEC);
-        
-    free(vector_of_ones);
-
-    debut = omp_get_wtime();
-    /*
-        Time/Space complexity :
-        Sequential case:
-            using normal representation: TO(n^2) SO(n^2)
-            using sparce representation: TO(nzero) SO(nzero * 3)
-        Parallel case:
-            using normal representation: TO(n^2 / p) SO(n^2)
-            using sparce representation: TO(nzero / p) SO(nzero * 3)
-    */
-    double* transition_matrix = create_transition_matrix(adjacency_matrix, out_links_vector, nb_artists, nb_collaborations, SPARCE_REPRESENTATION, MODE_EXEC);
+    double* transition_matrix = create_transition_matrix(adjacency_matrix, sparce_adjacency_matrix, nb_artists, nb_collaborations, SPARCE_REPRESENTATION, MODE_EXEC);
     fin = omp_get_wtime();
 	temps = fin - debut;
 	printf("Time to create transition_matrix ==>  : %lf s\n",temps);
 
 
     // Apply PageRank Algorithm
-    /*
-        Time/Space complexity :
-        Sequential case:
-            Normal representation: TO(nb_iterations * n^2) SO(4n)
-            Sparce representation: TO(nb_iterations * nzero) SO(4n)
-        Parallel case:
-            Normal representation: TO(nb_iterations * (n^2 / p)) SO(4n)
-            Sparce representation: TO(nb_iterations * (nzero + n/p)) SO(4n)
-    */
 	debut = omp_get_wtime();
     double *pg_vector = page_rank(transition_matrix, nb_collaborations, nb_artists, 0.85, 0.00001, MODE_EXEC, SPARCE_REPRESENTATION);
 	fin = omp_get_wtime();
@@ -169,10 +124,11 @@ int main(int argc, char **argv) {
         char adjacency_matrix_file_path[254] = "";
         strcpy(adjacency_matrix_file_path, file_path);
         strcat(adjacency_matrix_file_path, "adjacency_matrix.csv");
-        if(SPARCE_REPRESENTATION)
-            write_adjacency_matrix(nb_artists, nb_artists, opposite_rep_adjacency_matrix, adjacency_matrix_file_path);
-        else
-            write_adjacency_matrix(nb_artists, nb_artists, adjacency_matrix, adjacency_matrix_file_path);      
+        
+        // if(SPARCE_REPRESENTATION)
+        //     write_adjacency_matrix(nb_artists, nb_artists, opposite_rep_adjacency_matrix, adjacency_matrix_file_path);
+        // else
+        //     write_adjacency_matrix(nb_artists, nb_artists, adjacency_matrix, adjacency_matrix_file_path);      
 
         // WRITE TRANSITION MATRIX TO DISK
         char transition_matrix_file_path[254] = "";
@@ -194,7 +150,6 @@ int main(int argc, char **argv) {
 
 
     // Free allocated space
-    free(out_links_vector);
     free(adjacency_matrix);
     free(transition_matrix);
     free_table(hashtable);
@@ -390,12 +345,81 @@ int parse_infoArtist_csv(char* filepath, HashTable** hashtable){
     return artist_cpt;
 }
 
+
+/*
+    return number of artists's collaborations
+*/
+int number_collaborations_csv(char* filepath, HashTable* hashtable){
+
+    FILE* stream = fopen(filepath, "r");
+    char  delimiter = ';';
+    int nb_csv_columns = 0;
+    int nb_collaborations = 0;
+    if(stream == NULL) {
+        perror("Error opening file");
+        return(-1);
+    }
+
+    char line[1024];
+    int line_cpt = 0;
+    // read header line;
+    fgets(line, 1024, stream);
+    while (fgets(line, 1024, stream))
+    {   
+        line_cpt++;
+        char** tokens = split(line, delimiter, &nb_csv_columns);
+        int source_id = atoi(tokens[4]);
+        int target_id = atoi(tokens[6]);
+        if(!source_id || !target_id){
+            printf("Can not convert sourceID : %s or targetID : %s to integer in line %d\n", tokens[4], tokens[6], line_cpt);
+            return(-1);
+        }
+        
+        free_splitted_tokens(tokens, nb_csv_columns);
+
+        // Get index from artistId
+        int source_idx = ht_search(hashtable, source_id);
+        int target_idx = ht_search(hashtable, target_id);
+
+        if(source_idx == -1){
+            // printf("Key %d not found in hashtable", source_id);
+            // return(-1);
+            continue;
+        }
+        if(target_idx ==  -1){
+            // printf("Key %d not found in hashtable", target_id);
+            // return(-1);
+            // Skip unfound artist
+            continue;
+        }
+
+
+        nb_collaborations++;     
+    }
+
+    // Close FIle
+    fclose(stream);
+
+    return nb_collaborations;
+}
+
 /*
     create adjacency matrix from collaborations csv file
     return nb of collaborations (nb non zero elements of the adjacency matrix)
 */
-int parse_collaborations_csv(char* filepath, HashTable* hashtable, double* adjacency_matrix, int nb_artists){
+int parse_collaborations_csv(char* filepath, HashTable* hashtable, unsigned char** adjacency_matrix, int** sparce_adjacency_matrix, int nb_artists, int sparce_rep){
 
+    int nb_collaborations;
+    *adjacency_matrix = calloc(nb_artists * nb_artists, sizeof(unsigned char));
+
+    // If sparce representation (compressed format only non zero element)
+    if(sparce_rep){
+        // could contain duplicate collaborations
+        nb_collaborations = number_collaborations_csv(filepath, hashtable);
+        *sparce_adjacency_matrix = calloc(nb_collaborations * 3, sizeof(int));
+    }
+    
+    
     FILE* stream = fopen(filepath, "r");
     char  delimiter = ';';
     int nb_csv_columns = 0;
@@ -438,14 +462,22 @@ int parse_collaborations_csv(char* filepath, HashTable* hashtable, double* adjac
             continue;
         }
 
+
         // Source points to Target
-        if(adjacency_matrix[source_idx * nb_artists +  target_idx] != 1){
-            adjacency_matrix[source_idx * nb_artists +  target_idx] = 1;
+        if((*adjacency_matrix)[source_idx * nb_artists +  target_idx] != 1){
+            (*adjacency_matrix)[source_idx * nb_artists +  target_idx] = 1;
+            
+            if(sparce_rep){
+                // insert element into the sparce matrix
+                (*sparce_adjacency_matrix)[nb_not_zero_adjacency_matrix * 3] = source_idx;
+                (*sparce_adjacency_matrix)[nb_not_zero_adjacency_matrix * 3 + 1] = target_idx;
+                (*sparce_adjacency_matrix)[nb_not_zero_adjacency_matrix * 3 + 2] = 1;            
+            }
+
             // Increment cpt non zero elements 
             // usefull to create sparce matrix representation later
             nb_not_zero_adjacency_matrix++;
         }
-
     }
 
     // Close FIle
@@ -466,34 +498,46 @@ int parse_collaborations_csv(char* filepath, HashTable* hashtable, double* adjac
         using normal representation: TO(n^2 / p) SO(n^2)
         using sparce representation: TO(nzero / p) SO(nzero * 3)
 */
-double* create_transition_matrix(double* adjacency_matrix, double *out_links_vector, int n, int nbNonZero, int sparce_rep, int parralel){
-    // Initialize transition matrix
-    double *transition_matrix;
+double* create_transition_matrix(unsigned char* adjacency_matrix, int* sparce_adjacency_matrix,  int n, int nbNonZero, int sparce_rep, int parralel){
+    
+    double *out_links_vector = calloc(n,sizeof(double)),
+            *vector_of_ones = calloc(n,sizeof(double)),
+            *transition_matrix;
     int i;
 
+    #pragma omp parallel for schedule(static) if(parralel)
+    for(i = 0; i < n; i++){
+        vector_of_ones[i] = 1;
+    }
+
+    // Get out_links_vectors
     if(sparce_rep){
-        // SO(nbNonZero * 3)
+        /*
+            Time complexity : TO(nzero)
+        */
+        Sparce_Matrix_Vector_Product_int(sparce_adjacency_matrix, vector_of_ones, nbNonZero, n, out_links_vector, parralel);
+        free(vector_of_ones);
+
         transition_matrix = calloc(nbNonZero * 3, sizeof(double));
-        // TO(nzero / p)
         #pragma omp parallel for schedule(static) if(parralel)
         for(i = 0; i < nbNonZero; i++){
-                // if link exists from j to i
-                // then probabilty of going to i from j is 1 div number of out links of node j
-                int j = adjacency_matrix[i*3];
-                transition_matrix[i*3] = adjacency_matrix[i*3+1];
-                transition_matrix[i*3+1] = j;
-                transition_matrix[i*3+2] = 1 / out_links_vector[j];
+            // if link exists from j to i
+            // then probabilty of going to i from j is 1 div number of out links of node j
+            int j = sparce_adjacency_matrix[i*3];
+            transition_matrix[i*3] = sparce_adjacency_matrix[i*3+1];
+            transition_matrix[i*3+1] = j;
+            transition_matrix[i*3+2] = 1 / out_links_vector[j];
         }
     }
     else{
-        // SO(n^2)
-        transition_matrix = calloc(n * n, sizeof(double));
+        Matrix_Vector_Product_uchar(adjacency_matrix, vector_of_ones, n, n, out_links_vector, parralel);
+        free(vector_of_ones);
 
-        // TO(n^2 / p)
+        transition_matrix = calloc(n * n, sizeof(double));
         #pragma omp parallel for schedule(static) if(parralel)
-for(i = 0; i < n; i++){
+        for(i = 0; i < n; i++){
             int j;
-for(j = 0; j < n; j++){
+            for(j = 0; j < n; j++){
                 // if link exists from j to i
                 // then probabilty of going to i from j is 1 div number of out links of node j
                 if(adjacency_matrix[j*n+i])
@@ -501,6 +545,8 @@ for(j = 0; j < n; j++){
             }
         }
     }
+        
+    free(out_links_vector);
 
     return transition_matrix;
 }

@@ -70,9 +70,12 @@ void Vector_Vector_Addition(double* x, double* y, int n);
 double DotProduct(double* x, double* y, int n, int parallel);
 
 void Matrix_Vector_Product(double* A, double* v, int row, int col, double* Av, int parallel);
+void Matrix_Vector_Product_uchar(unsigned char* A, double* v, int row, int col, double* Av, int parallel);
 
 void Matrix_Vector_Product_sequential(double* A, double* v, int row, int col, double* Av);
 void Matrix_Vector_Product_parralel(double* A, double* v, int row, int col, double* Av);
+void Matrix_Vector_Product_parralel_uchar(unsigned char* A, double* v, int row, int col, double* Av);
+void Matrix_Vector_Product_sequential_uchar(unsigned char* A, double* v, int row, int col, double* Av);
 
 double* Matrix_Matrix_Product(double* A, double* B, int rowA, int colA, int colB, double* AB);
 double* Matrix_Matrix_Subsctraction(double* A, double* B, int row, int col, double* AB);
@@ -104,6 +107,7 @@ double NormeFrobenius(int nb_ligne, int nb_colonne, double* matrice);
         Space complexity : SO(n * p)
 */
 void Sparce_Matrix_Vector_Product(double* A, double* v, int sizeA, int sizeV, double* Av, int parallel);
+void Sparce_Matrix_Vector_Product_int(int* A, double* v, int sizeA, int sizeV, double* Av, int parallel);
 
 int count_zero_matrix(double *A, int row, int col);
 
