@@ -32,6 +32,15 @@ int main(int argc, char **argv) {
     char* directory_path = dirname(strdup(path_adjancecy_matrix_file));
     printf("directory path : %s\n", directory_path);
 
+    if(MODE_EXEC){
+        // Get number of threads
+        int nb_threads = 0;
+        #pragma omp parallel shared(nb_threads)
+        #pragma omp master
+            nb_threads = omp_get_num_threads();
+        fprintf(stdout, "Nb threads: %d\n", nb_threads);
+    }
+
     // *************** BEGIN : READ adjacency matrix **********************
     debut = omp_get_wtime();
 
