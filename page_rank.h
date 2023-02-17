@@ -11,4 +11,4 @@
             Normal representation: TO(nb_iterations * (n^2 / p)) SO(4n)
             Sparce representation: TO(nb_iterations * n) SO(n*p + 4n)
 */
-double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int parallel_mode, int sparce_rep);
+double *page_rank(double *A, double* teleportation_vector, int nbNonZeroA , int n, double B, double p, int parallel_mode, int sparce_rep);

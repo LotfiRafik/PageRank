@@ -1,28 +1,31 @@
-CC = gcc
+CC = gcc -Wno-unused-result -O3 
 EXEC = a.out
 
 all: $(EXEC)
 
-perf:  perf.o hashtable.o blas.o page_rank.o
-	$(CC) -o perf perf.o hashtable.o blas.o page_rank.o -fopenmp -lm
+deezer:  deezer.o utils/hashtable.o utils/blas.o utils/utils.o page_rank.o
+	$(CC) -o $(EXEC) deezer.o utils/hashtable.o utils/blas.o utils/utils.o page_rank.o -fopenmp -lm
 
-perf.o: perf.c
-	$(CC) -c perf.c -fopenmp
+deezer.o: deezer.c
+	$(CC) -c deezer.c -fopenmp
 
 main.o: main.c
 	$(CC) -c main.c -fopenmp
 
-hashtable.o: hashtable.c
+hashtable.o: utils/hashtable.c
 	$(CC) -c hashtable.c -fopenmp
 
-blas.o: blas.c
+blas.o: utils/blas.c
 	$(CC) -c blas.c -fopenmp
+
+utils.o: utils/utils.c
+	$(CC) -c utils/utils.c -fopenmp
 
 page_rank.o: page_rank.c
 	$(CC) -c page_rank.c -fopenmp
 
-$(EXEC): main.o hashtable.o blas.o page_rank.o
-	$(CC) -o $(EXEC) main.o hashtable.o blas.o page_rank.o -fopenmp -lm
+$(EXEC): main.o utils/hashtable.o utils/blas.o utils/utils.o page_rank.o
+	$(CC) -o $(EXEC) main.o utils/hashtable.o utils/blas.o utils/utils.o page_rank.o -fopenmp -lm
 
 clean:
 	rm *.o

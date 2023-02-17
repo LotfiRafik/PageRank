@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "blas.h"
-#include "page_rank.h"
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include "utils/blas.h"
+#include "page_rank.h"
+
 
 /*
     Page Rank Algorithm 
@@ -26,12 +27,11 @@
             Time complexity : TO(nb_iterations * (nzero + n/p)) 
             Space complexity : SO(4n)
 */
-double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int parallel_mode, int sparce_rep){
+double *page_rank(double *A, double* teleportation_vector, int nbNonZeroA , int n, double B, double p, int parallel_mode, int sparce_rep){
 
     // Space complexity : Auxiliary + Space = O(3n + 1)
     double *x=calloc(n , sizeof(double)),
             *x_prec=calloc(n , sizeof(double)),
-            *teleportation_vector=calloc(n , sizeof(double)),
             error;
 
     int sum_teleportation_vector = 0;
@@ -39,27 +39,11 @@ double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int par
 
     srand(time(NULL));   // Initialization, should only be called once.
 
-
-    // TO(n / p)
-    #pragma omp parallel for schedule(static) private(i) reduction(+:sum_teleportation_vector) if(parallel_mode)
-    for (i = 0; i < n; i++)
-    {
-        int r = rand() % 10 + 1;    // Returns a pseudo-random integer between 1 and 10.
-        sum_teleportation_vector += r;
-        teleportation_vector[i] = r;
-    }
-
-    // TO(n / p)
-    #pragma omp parallel for schedule(static) private(i) if(parallel_mode)
+    #pragma omp parallel for schedule(static) private(i)
     for (i = 0; i < n; i++)
     {
         // initializer le vecteur de depart
         x[i] = 1./n;
-
-        // initializer le vecteur de teleportation aleatoire
-        // teleportation_vector[i] /= sum_teleportation_vector; 
-        // Original page rank
-        teleportation_vector[i] = 1./n;  
     }
 
 
@@ -128,6 +112,5 @@ double *page_rank(double *A, int nbNonZeroA , int n, double B, double p, int par
 
     // Free allocated memory space
     free(x_prec);
-    free(teleportation_vector);
     return x;
 }
