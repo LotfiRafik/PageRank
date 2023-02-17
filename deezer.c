@@ -145,7 +145,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
     fprintf(stream,"artist_id;artist_name;pourtentage_fans;pagerank_score\n");
-    for (size_t i = 0; i < nb_artists; i++){      
+    for (i = 0; i < nb_artists; i++){      
         fprintf(stream,"%d;%s;%0.2f;%0.15f\n", artists_ids[i], artists_names[i], fans_percent_artists[i]*100 ,pg_vector[i]);
     }
     fclose(stream);
