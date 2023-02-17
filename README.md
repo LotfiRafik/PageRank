@@ -1,8 +1,6 @@
-# PageRank algorithm implemention in C
+# PageRank algorithm implementation in C
 
-### Usage :  
-Compile :  
-
+### Usage :    
 #### To apply pageRank algo on an adjacency matrix from a file :
 
 Compile:  
